@@ -47,28 +47,6 @@ def backup(config=None, rsync=None, last_dir=None, opts=None):
 
 #--------------------------------------------------------------------------------#
 
-def find_last_dir(config=None, maxd=1, verbosity=0):
-    '''
-    Find last available dir into which rsync will hardlink unmodified files.
-    maxd = max number of days we want to move back.
-    '''
-    
-    mmt = config['TODIR']
-    
-    for i in range(1,maxd+1):
-        gdi = T.gimme_date(-i)
-        dir = '{0}/{1}'.format(mmt,gdi)
-        if verbosity > 1:
-            print(dir)
-        if os.path.isdir(dir):
-            # If a match was found, exit early:
-            return dir
-
-    # If arrived so far without a result:
-    return None
-
-#--------------------------------------------------------------------------------#
-
 def build_rsync(in_rsync, config, opts, conf_dir):
     '''
     Build a more complete rsync command.
@@ -105,7 +83,41 @@ class Rsync(object):
     def __init__(self, data):
         self.dryrun = False
         self.rsync_base = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
-        self.data = data
+        self.exclude_general = os.path.join(data.conf_dir, "global.excludes")
+        self.exclude_particular = '{0.conf_dir}/{0.opts.config}.excludes'.format(data)
+        self.cmd = '' # final command
+
+    def build_cmd(self, data):
+        '''
+        Build a the rsync command line.
+        '''
+
+        if data.verbosity > 0:
+            print("Building rsync command...")
+
+        self.cmd  = self.rsync_base
+        self.cmd += ' --exclude-from={0} '.format(self.exclude_general)
+        if os.path.isfile(self.exclude_particular):
+            self.cmd += ' --exclude-from={0} '.format(self.exclude_particular)
+        
+        if data.verbosity > 1:
+            print(self.cmd)
+
+        if data.verbosity > 0:
+            self.cmd += ' -vh --progress '
+
+        if 'rsyncopts' in data.J:
+            self.cmd += data.J['rsyncopts']
+
+    def run(self, opts):
+        if opts.verbosity > 0:
+            print("Doing actual backup...")
+
+        if not opts.dryrun:
+            s = sp.Popen(self.cmd,shell=True)
+            s.communicate()
+
+#--------------------------------------------------------------------------------#
 
 class Data(object):
     '''
@@ -144,16 +156,18 @@ class Data(object):
         '''
 
         if self.verbosity > 0:
-            print("Determining last linkable dir...")
+            print("Determining last linkable dir..."),
         
         todir = self.J['todir']
         
         for i in range(1, self.max_days_back+1):
             gdi = T.gimme_date(-i)
             dir = '{0}/{1}'.format(todir, gdi)
-            if self.verbosity > 1:
-                print(dir)
+            if self.verbosity > 0:
+                string = '[{0}]'.format(dir)
+                print(string)
             if os.path.isdir(dir):
                 # If a match was found, exit early:
                 self.link_dir = dir
                 break
+

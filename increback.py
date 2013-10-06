@@ -29,9 +29,9 @@ $ increback.py -h
 I use this script interactively.
 '''
 
-import os
 import argparse
-import libib.core as core
+
+from libib import core
 
 #------------------------------------------------------------------------------#
 
@@ -70,39 +70,24 @@ if o.dryrun:
 
 #--------------------------------------------------------------------------------#
 
-###rsync = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
-###user  = os.environ['LOGNAME']                      # username of script user
-###home  = os.environ['HOME']                         # your home dir
-###conf_dir = '{0}/.increback'.format(home)           # configuration dir
-###logfile = '{0}/.LOGs/increback.log'.format(home)   # log file
-###mxback  = 240                                      # max number of days to go back 
-
 # Read configurations:
 D.read_conf()
 
-###if R.verbosity > 0:
-###    string = "Reading config... [{0}]".format(D.conf_dir)
-###    print(string)
-###cfg = core.read_config(conf_dir, o)
-
 # Find last available dir (whithin specified limit) to hardlink to when unaltered:
 D.find_last_linkable_dir()
-###if o.verbosity > 0: 
-###    print("Determining last 'linkable' dir...")
-###last_dir = core.find_last_dir(cfg,mxback,o.verbosity)
     
-exit()
 # Build rsync command:
-if o.verbosity > 0: 
-    print("Building rsync command...")
+R.build_cmd(D)
     
-rsync = core.build_rsync(rsync, cfg, o, conf_dir)
-
 # Make backup:
+success = R.run(o)
+
+'''
 if o.verbosity > 0:
     print("Doing actual backup...")
 
 success = core.backup(cfg, rsync, last_dir, o)
+'''
 
 # Final message:
 if not o.dryrun and success:
