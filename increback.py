@@ -24,7 +24,7 @@ USAGE
 
 For usage, run:
 
-% increback.py -h
+$ increback.py -h
 
 I use this script interactively.
 '''
@@ -53,66 +53,57 @@ parser.add_argument("-y", "--dryrun",
         action="store_true",
         default=False)
 
-parser.add_argument("-d", "--delete",
-        help="Try to find old backups to delete. Default: perform a backup.",
-        action="store_true",
-        default=False)
-
 o = parser.parse_args()
 
 #--------------------------------------------------------------------------------#
 
+# General variables in centralized Data() object:
+D = core.Data(o)
+D.verbosity = o.verbosity
+
 # rsync-command stuff object:
-R = core.Rsync()
-R.verbosity = o.verbosity
+R = core.Rsync(D)
 
 # Make dry runs more verbose:
 if o.dryrun:
-    R.verbosity += 1
+    D.verbosity += 1
 
 #--------------------------------------------------------------------------------#
 
-# General variables:
-rsync = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
-user  = os.environ['LOGNAME']                      # username of script user
-home  = os.environ['HOME']                         # your home dir
-conf_dir = '{0}/.increback'.format(home)           # configuration dir
-logfile = '{0}/.LOGs/increback.log'.format(home)   # log file
-mxback  = 240                                      # max number of days to go back 
+###rsync = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
+###user  = os.environ['LOGNAME']                      # username of script user
+###home  = os.environ['HOME']                         # your home dir
+###conf_dir = '{0}/.increback'.format(home)           # configuration dir
+###logfile = '{0}/.LOGs/increback.log'.format(home)   # log file
+###mxback  = 240                                      # max number of days to go back 
 
 # Read configurations:
+D.read_conf()
+
+###if R.verbosity > 0:
+###    string = "Reading config... [{0}]".format(D.conf_dir)
+###    print(string)
+###cfg = core.read_config(conf_dir, o)
+
+# Find last available dir (whithin specified limit) to hardlink to when unaltered:
+D.find_last_linkable_dir()
+###if o.verbosity > 0: 
+###    print("Determining last 'linkable' dir...")
+###last_dir = core.find_last_dir(cfg,mxback,o.verbosity)
+    
+exit()
+# Build rsync command:
+if o.verbosity > 0: 
+    print("Building rsync command...")
+    
+rsync = core.build_rsync(rsync, cfg, o, conf_dir)
+
+# Make backup:
 if o.verbosity > 0:
-    print("Reading config files...")
-    
-cfg = core.read_config(conf_dir, o)
+    print("Doing actual backup...")
 
-if o.delete:
-    # Determine if any to delete:
-    if o.verbosity > 1:
-        print("Finding out deletable dirs...")
-    core.find_deletable(cfg)
-else:
-    # Build rsync command:
-    if o.verbosity > 0: 
-        print("Building rsync command...")
-        
-    rsync = core.build_rsync(rsync, cfg, o, conf_dir)
-    
-    # Find last available dir (whithin specified limit) to hardlink to when unaltered:
-    if o.verbosity > 0: 
-        print("Determining last 'linkable' dir...")
-        
-    last_dir = core.find_last_dir(cfg,mxback,o.verbosity)
-    
-    if o.verbosity > 0:
-        print(" -> '{0}'".format(last_dir))
-        
-    # Make backup:
-    if o.verbosity > 0:
-        print("Doing actual backup...")
-    
-    success = core.backup(cfg, rsync, last_dir, o)
+success = core.backup(cfg, rsync, last_dir, o)
 
-    # Final message:
-    if not o.dryrun and success:
-        print('Sucess!')
+# Final message:
+if not o.dryrun and success:
+    print('Sucess!')

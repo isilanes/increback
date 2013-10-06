@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import os
+import json
 import Time as T
 import subprocess as sp
 
@@ -43,23 +44,6 @@ def backup(config=None, rsync=None, last_dir=None, opts=None):
         print("Could not back up: no source/destination machine(s) specified!")
 
     return success
-
-#--------------------------------------------------------------------------------#
-
-def read_config(conf_dir, opts):
-    '''
-    Read the configuration file.
-    '''
-    
-    conf_file = '{0}/{1}.conf'.format(conf_dir, opts.config)
-    
-    props = {}
-    with open(conf_file,'r') as f:
-        for line in f:
-            aline = line.replace('\n','').split('=')
-            props[aline[0]] = '='.join(aline[1:])
-        
-    return props
 
 #--------------------------------------------------------------------------------#
 
@@ -113,22 +97,63 @@ def build_rsync(in_rsync, config, opts, conf_dir):
 
 #--------------------------------------------------------------------------------#
 
-def find_deletable(cfg):
-    '''
-    Find old, deletable, backups.
-    '''
-
-    # Deleting all that stuff, as I don't understand it :^)
-    print('Functionality not yet implemented.')
-
-#--------------------------------------------------------------------------------#
-
 class Rsync(object):
     '''
     Objects that hold all info about a rsync command.
     '''
 
-    def __init__(self):
-        self.verbosity = 0
+    def __init__(self, data):
         self.dryrun = False
         self.rsync_base = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
+        self.data = data
+
+class Data(object):
+    '''
+    Class to hold all miscellaneous general data.
+    '''
+
+    def __init__(self, opts):
+        h  = os.environ['HOME']
+        self.home = h                                      # your home dir
+        self.user = os.environ['LOGNAME']                  # username of script user
+        self.conf_dir = '{0}/.increback'.format(h)         # configuration dir
+        self.logfile = '{0}/.LOGs/increback.log'.format(h) # log file
+        self.mxback  = 240                                 # max number of days to go back
+        self.opts = opts # command-line options passed via argparse
+        fn = '{0}.json'.format(self.opts.config)
+        self.conf_file = os.path.join(self.conf_dir, fn)
+        self.max_days_back = 1 # max amount of days back to look for linkable dirs
+        self.link_dir = None
+        self.verbosity = opts.verbosity
+
+    def read_conf(self):
+        '''
+        Read the config file.
+        '''
+        
+        if self.verbosity > 0:
+            string = "Reading config... [{0}]".format(self.conf_file)
+            print(string)
+
+        with open(self.conf_file) as f:
+            self.J = json.load(f)
+        
+    def find_last_linkable_dir(self):
+        '''
+        Find last available dir into which rsync will hardlink unmodified files.
+        '''
+
+        if self.verbosity > 0:
+            print("Determining last linkable dir...")
+        
+        todir = self.J['todir']
+        
+        for i in range(1, self.max_days_back+1):
+            gdi = T.gimme_date(-i)
+            dir = '{0}/{1}'.format(todir, gdi)
+            if self.verbosity > 1:
+                print(dir)
+            if os.path.isdir(dir):
+                # If a match was found, exit early:
+                self.link_dir = dir
+                break
