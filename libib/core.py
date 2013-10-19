@@ -2,7 +2,7 @@
 
 import os
 import json
-import Time as T
+import datetime
 import subprocess as sp
 
 #--------------------------------------------------------------------------------#
@@ -20,7 +20,13 @@ def doit(cmnd, opts):
         s = sp.Popen(cmnd,shell=True)
         s.communicate()
 
-#--------------------------------------------------------------------------------#
+def gimme_date(offset=0):
+    day   = datetime.date.today()
+    delta = datetime.timedelta(days=offset)
+    day   = day + delta
+    date  = day.strftime('%Y.%m.%d')
+    
+    return date
 
 def backup(config=None, rsync=None, last_dir=None, opts=None):
     '''
@@ -35,7 +41,7 @@ def backup(config=None, rsync=None, last_dir=None, opts=None):
 
         # Actually do it:
         fmt = '{0} {1[FROMDIR]}/ {1[TODIR]}/{2}/'
-        cmnd = fmt.format(rsync, config, T.gimme_date())
+        cmnd = fmt.format(rsync, config, gimme_date())
         doit(cmnd, opts)
 
         success = True
@@ -44,8 +50,6 @@ def backup(config=None, rsync=None, last_dir=None, opts=None):
         print("Could not back up: no source/destination machine(s) specified!")
 
     return success
-
-#--------------------------------------------------------------------------------#
 
 def build_rsync(in_rsync, config, opts, conf_dir):
     '''
@@ -106,16 +110,20 @@ class Rsync(object):
         if data.verbosity > 0:
             self.cmd += ' -vh --progress '
 
+        if data.link_dir:
+            pass
+
         if 'rsyncopts' in data.J:
             self.cmd += data.J['rsyncopts']
 
     def run(self, opts):
-        if opts.verbosity > 0:
-            print("Doing actual backup...")
-
-        if not opts.dryrun:
-            s = sp.Popen(self.cmd,shell=True)
-            s.communicate()
+        if opts.dryrun:
+            print("Actual backup would go here...")
+        else:
+            if opts.verbosity > 0:
+                print("Doing actual backup...")
+                s = sp.Popen(self.cmd,shell=True)
+                s.communicate()
 
 #--------------------------------------------------------------------------------#
 
@@ -134,7 +142,6 @@ class Data(object):
         self.opts = opts # command-line options passed via argparse
         fn = '{0}.json'.format(self.opts.config)
         self.conf_file = os.path.join(self.conf_dir, fn)
-        self.max_days_back = 1 # max amount of days back to look for linkable dirs
         self.link_dir = None
         self.verbosity = opts.verbosity
 
@@ -144,7 +151,7 @@ class Data(object):
         '''
         
         if self.verbosity > 0:
-            string = "Reading config... [{0}]".format(self.conf_file)
+            string = "Reading config... [ {0} ]".format(self.conf_file)
             print(string)
 
         with open(self.conf_file) as f:
@@ -159,15 +166,18 @@ class Data(object):
             print("Determining last linkable dir..."),
         
         todir = self.J['todir']
-        
-        for i in range(1, self.max_days_back+1):
-            gdi = T.gimme_date(-i)
-            dir = '{0}/{1}'.format(todir, gdi)
-            if self.verbosity > 0:
-                string = '[{0}]'.format(dir)
-                print(string)
+
+        for i in range(1, self.J["max_days_back"] + 1):
+            gdi = gimme_date(-i)
+            dir = os.path.join(todir, gdi)
             if os.path.isdir(dir):
+                if self.verbosity > 0:
+                    string = '  [ {0} ]'.format(dir)
+                print(string)
+
                 # If a match was found, exit early:
                 self.link_dir = dir
                 break
 
+        if not self.link_dir and self.verbosity > 0:
+            print(' [ None ]')

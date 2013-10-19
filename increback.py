@@ -82,13 +82,6 @@ R.build_cmd(D)
 # Make backup:
 success = R.run(o)
 
-'''
-if o.verbosity > 0:
-    print("Doing actual backup...")
-
-success = core.backup(cfg, rsync, last_dir, o)
-'''
-
 # Final message:
 if not o.dryrun and success:
     print('Sucess!')
