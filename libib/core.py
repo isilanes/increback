@@ -7,19 +7,6 @@ import subprocess as sp
 
 #--------------------------------------------------------------------------------#
 
-def doit(cmnd, opts):
-    '''
-    Print and execute command, depending on o.verbosity and o.dryrun.
-    cmnd = command to run
-    '''
-    
-    if opts.verbosity > 0:
-        print(cmnd)
-        
-    if not opts.dryrun:
-        s = sp.Popen(cmnd,shell=True)
-        s.communicate()
-
 def gimme_date(offset=0):
     day   = datetime.date.today()
     delta = datetime.timedelta(days=offset)
@@ -27,55 +14,6 @@ def gimme_date(offset=0):
     date  = day.strftime('%Y.%m.%d')
     
     return date
-
-def backup(config=None, rsync=None, last_dir=None, opts=None):
-    '''
-    Actually make the backup.
-    '''
-
-    success = False
-
-    if config:
-        if last_dir:
-            rsync = '{0} --link-dest={1}'.format(rsync, last_dir)
-
-        # Actually do it:
-        fmt = '{0} {1[FROMDIR]}/ {1[TODIR]}/{2}/'
-        cmnd = fmt.format(rsync, config, gimme_date())
-        doit(cmnd, opts)
-
-        success = True
-
-    else:
-        print("Could not back up: no source/destination machine(s) specified!")
-
-    return success
-
-def build_rsync(in_rsync, config, opts, conf_dir):
-    '''
-    Build a more complete rsync command.
-    '''
-    
-    # Global excludes:
-    out_rsync = '{0} --exclude-from={1}/global.excludes '.format(in_rsync, conf_dir)
-    
-    # Particular excludes:
-    pef = '{0}/{1}.excludes'.format(conf_dir, opts.config)
-    if os.path.isfile(pef):
-        out_rsync = '{0} --exclude-from={1} '.format(out_rsync, pef)
-    
-    # Verbosity:
-    if opts.verbosity > 0:
-        out_rsync += ' -vh '
-        out_rsync += ' --progress '
-    
-    # Machine-specific options:
-    try:
-        out_rsync += ' {0} '.format(config['RSYNCOPS'])
-    except:
-        pass
-    
-    return out_rsync
 
 #--------------------------------------------------------------------------------#
 
