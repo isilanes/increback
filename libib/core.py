@@ -90,13 +90,14 @@ class Rsync(object):
         self.exclude_general = os.path.join(data.conf_dir, "global.excludes")
         self.exclude_particular = '{0.conf_dir}/{0.opts.config}.excludes'.format(data)
         self.cmd = '' # final command
+        self.data = data
 
-    def build_cmd(self, data):
+    def build_cmd(self):
         '''
         Build a the rsync command line.
         '''
 
-        if data.verbosity > 0:
+        if self.data.verbosity > 0:
             print("Building rsync command...")
 
         self.cmd  = self.rsync_base
@@ -104,17 +105,27 @@ class Rsync(object):
         if os.path.isfile(self.exclude_particular):
             self.cmd += ' --exclude-from={0} '.format(self.exclude_particular)
         
-        if data.verbosity > 1:
-            print(self.cmd)
-
-        if data.verbosity > 0:
+        if self.data.verbosity > 0:
             self.cmd += ' -vh --progress '
 
-        if data.link_dir:
+        if self.data.link_dir:
             pass
 
-        if 'rsyncopts' in data.J:
-            self.cmd += data.J['rsyncopts']
+        if 'rsyncopts' in self.data.J:
+            self.cmd += self.data.J['rsyncopts']
+
+        # Link-dir:
+        self.cmd += ' --link-dest={0} '.format(self.data.link_dir)
+
+        # From-dir:
+        self.cmd += ' {0}/ '.format(self.data.J['fromdir'])
+
+        # To-dir:
+        todir = os.path.join(self.data.J['todir'], gimme_date())
+        self.cmd += ' {0}/ '.format(todir)
+
+        if self.data.verbosity > 1:
+            print(self.cmd)
 
     def run(self, opts):
         if opts.dryrun:

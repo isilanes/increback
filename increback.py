@@ -61,9 +61,6 @@ o = parser.parse_args()
 D = core.Data(o)
 D.verbosity = o.verbosity
 
-# rsync-command stuff object:
-R = core.Rsync(D)
-
 # Make dry runs more verbose:
 if o.dryrun:
     D.verbosity += 1
@@ -77,7 +74,8 @@ D.read_conf()
 D.find_last_linkable_dir()
     
 # Build rsync command:
-R.build_cmd(D)
+R = core.Rsync(D)
+R.build_cmd()
     
 # Make backup:
 success = R.run(o)
