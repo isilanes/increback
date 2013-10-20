@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import os
+import sys
 import json
 import datetime
 import subprocess as sp
@@ -103,8 +104,12 @@ class Data(object):
             string = "Reading config... [ {0} ]".format(self.conf_file)
             print(string)
 
-        with open(self.conf_file) as f:
-            self.J = json.load(f)
+        try:
+            with open(self.conf_file) as f:
+                self.J = json.load(f)
+        except:
+            print("Could not load config file [ {0} ]".format(self.conf_file))
+            sys.exit()
         
     def find_last_linkable_dir(self):
         '''
