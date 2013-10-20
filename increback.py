@@ -29,6 +29,8 @@ $ increback.py -h
 I use this script interactively.
 '''
 
+import os
+import sys
 import argparse
 
 from libib import core
@@ -69,6 +71,12 @@ if o.dryrun:
 
 # Read configurations:
 D.read_conf()
+
+# Check destination is mounted:
+if not os.path.isdir(D.J['todir']):
+    string = '[ERROR] Destination dir {0} not present!'.format(D.J['todir'])
+    print(string)
+    sys.exit()
 
 # Find last available dir (whithin specified limit) to hardlink to when unaltered:
 D.find_last_linkable_dir()
