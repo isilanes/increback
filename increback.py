@@ -1,9 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # coding=utf-8
 
 '''
 increback
-(c) 2008-2013, Iñaki Silanes
+(c) 2008-2014, Iñaki Silanes
 
 LICENSE
 
@@ -78,8 +78,8 @@ if not os.path.isdir(D.J['todir']):
     print(string)
     sys.exit()
 
-# Find last available dir (whithin specified limit) to hardlink to when unaltered:
-D.find_last_linkable_dir()
+# Find last available dirs (whithin specified limit) to hardlink to when unaltered:
+D.find_last_linkable_dirs(N=10)
     
 # Build rsync command:
 R = core.Rsync(D)

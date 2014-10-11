@@ -16,12 +16,9 @@ def gimme_date(offset=0):
     
     return date
 
-#--------------------------------------------------------------------------------#
 
 class Rsync(object):
-    '''
-    Objects that hold all info about a rsync command.
-    '''
+    '''Objects that hold all info about a rsync command.'''
 
     def __init__(self, data):
         self.dryrun = False
@@ -32,9 +29,7 @@ class Rsync(object):
         self.data = data
 
     def build_cmd(self):
-        '''
-        Build a the rsync command line.
-        '''
+        '''Build a the rsync command line.'''
 
         if self.data.verbosity > 0:
             print("Building rsync command...")
@@ -47,14 +42,12 @@ class Rsync(object):
         if self.data.verbosity > 0:
             self.cmd += ' -vh --progress '
 
-        if self.data.link_dir:
-            pass
-
         if 'rsyncopts' in self.data.J:
             self.cmd += self.data.J['rsyncopts']
 
-        # Link-dir:
-        self.cmd += ' --link-dest={0} '.format(self.data.link_dir)
+        # Link-dirs:
+        for link_dir in self.data.link_dirs:
+            self.cmd += ' --link-dest={0} '.format(link_dir)
 
         # From-dir:
         self.cmd += ' {0}/ '.format(self.data.J['fromdir'])
@@ -75,12 +68,9 @@ class Rsync(object):
                 s = sp.Popen(self.cmd,shell=True)
                 s.communicate()
 
-#--------------------------------------------------------------------------------#
 
 class Data(object):
-    '''
-    Class to hold all miscellaneous general data.
-    '''
+    '''Class to hold all miscellaneous general data.'''
 
     def __init__(self, opts):
         h  = os.environ['HOME']
@@ -92,7 +82,7 @@ class Data(object):
         self.opts = opts # command-line options passed via argparse
         fn = '{0}.json'.format(self.opts.config)
         self.conf_file = os.path.join(self.conf_dir, fn)
-        self.link_dir = None
+        self.link_dirs = []
         self.verbosity = opts.verbosity
 
     def read_conf(self):
@@ -111,27 +101,34 @@ class Data(object):
             print("Could not load config file [ {0} ]".format(self.conf_file))
             sys.exit()
         
-    def find_last_linkable_dir(self):
-        '''
-        Find last available dir into which rsync will hardlink unmodified files.
-        '''
+    def find_last_linkable_dirs(self, N=1):
+        '''Find N last available dirs into which rsync will hardlink 
+        unmodified files (max N=20).'''
+
+        if N > 20:
+            N = 20
 
         if self.verbosity > 0:
-            print("Determining last linkable dir..."),
+            print("Determining last linkable dirs (up to {0} days back):".format(self.J['max_days_back']))
         
         todir = self.J['todir']
 
+        self.link_dirs = []
         for i in range(1, self.J["max_days_back"] + 1):
             gdi = gimme_date(-i)
             dir = os.path.join(todir, gdi)
             if os.path.isdir(dir):
                 if self.verbosity > 0:
-                    string = '  [ {0} ]'.format(dir)
+                    string = '  {0} '.format(dir)
                 print(string)
 
-                # If a match was found, exit early:
-                self.link_dir = dir
-                break
+                # If N matches found already, exit early:
+                self.link_dirs.append(dir)
+                if len(self.link_dirs) >= N:
+                    break
 
-        if not self.link_dir and self.verbosity > 0:
+        if not self.link_dirs and self.verbosity > 0:
             print(' [ None ]')
+
+
+#--------------------------------------------------------------------------------#
