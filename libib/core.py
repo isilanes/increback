@@ -86,9 +86,7 @@ class Data(object):
         self.verbosity = opts.verbosity
 
     def read_conf(self):
-        '''
-        Read the config file.
-        '''
+        '''Read the config file.'''
         
         if self.verbosity > 0:
             string = "Reading config... [ {0} ]".format(self.conf_file)
