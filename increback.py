@@ -1,9 +1,6 @@
-#!/usr/bin/python3
-# coding=utf-8
-
-'''
+"""
 increback
-(c) 2008-2014, Iñaki Silanes
+(c) 2008-2014,2017, Iñaki Silanes
 
 LICENSE
 
@@ -27,67 +24,79 @@ For usage, run:
 $ increback.py -h
 
 I use this script interactively.
-'''
+"""
 
+# Standard libs:
 import os
 import sys
 import argparse
 
+# Our libs:
 from libib import core
 
-#------------------------------------------------------------------------------#
+# Functions:
+def read_args(args=sys.argv[1:]):
+    """Parse command line arguments and return result."""
 
-# Read arguments:
-parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
 
-parser.add_argument("-c", "--config",
-        help="Configuration file. Default: None.",
-        default=None)
+    parser.add_argument("-c", "--config",
+            help="Configuration file. Default: None.",
+            default=None)
 
-parser.add_argument("-v", "--verbose",
-        dest="verbosity",
-        help="Increase verbosity level by 1. Default: 0 (no output)",
-        action="count",
-        default=0)
+    parser.add_argument("-v", "--verbose",
+            dest="verbosity",
+            help="Increase verbosity level by 1. Default: 0 (no output)",
+            action="count",
+            default=0)
 
-parser.add_argument("-y", "--dryrun",
-        help="Dry run: do nothing, just tell what would be done. Default: real run.",
-        action="store_true",
-        default=False)
+    parser.add_argument("-y", "--dryrun",
+            help="Dry run: do nothing, just tell what would be done. Default: real run.",
+            action="store_true",
+            default=False)
 
-o = parser.parse_args()
 
-#--------------------------------------------------------------------------------#
+    return parser.parse_args(args)
 
-# General variables in centralized Data() object:
-D = core.Data(o)
-D.verbosity = o.verbosity
-
-# Make dry runs more verbose:
-if o.dryrun:
-    D.verbosity += 1
-
-#--------------------------------------------------------------------------------#
-
-# Read configurations:
-D.read_conf()
-
-# Check destination is mounted:
-if not os.path.isdir(D.J['todir']):
-    string = '[ERROR] Destination dir {0} not present!'.format(D.J['todir'])
-    print(string)
-    sys.exit()
-
-# Find last available dirs (whithin specified limit) to hardlink to when unaltered:
-D.find_last_linkable_dirs(N=10)
+def main():
+    """Execute this when called as stand-alone."""
     
-# Build rsync command:
-R = core.Rsync(D)
-R.build_cmd()
-    
-# Make backup:
-success = R.run(o)
+    # Get command-line options:
+    opts = read_args()
 
-# Final message:
-if not o.dryrun and success:
-    print('Sucess!')
+    # General variables in centralized Data() object:
+    data = core.Data(opts)
+
+    # Make dry runs more verbose:
+    if opts.dryrun:
+        data.verbosity += 1
+
+    #--------------------------------------------------------------------------------#
+
+    # Read configurations:
+    data.read_conf()
+
+    # Check destination is mounted:
+    if not os.path.isdir(data.J['todir']):
+        string = '[ERROR] Destination dir {d} not present!'.format(d=data.J['todir'])
+        print(string)
+        sys.exit()
+
+    # Find last available dirs (whithin specified limit) to hardlink to when unaltered:
+    data.find_last_linkable_dirs(N=10)
+        
+    # Build rsync command:
+    R = core.Rsync(data)
+    R.build_cmd()
+        
+    # Make backup:
+    success = R.run(opts)
+
+    # Final message:
+    if not opts.dryrun and success:
+        print('Sucess!')
+
+
+# If called as stand-alone:
+if __name__ == "__main__":
+    main()

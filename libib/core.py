@@ -1,25 +1,27 @@
-# coding=utf-8
-
+# Standard libs:
 import os
 import sys
 import json
 import datetime
 import subprocess as sp
 
-#--------------------------------------------------------------------------------#
-
+# Functions:
 def gimme_date(offset=0):
-    day   = datetime.date.today()
+    """Return YYYY.MM.DD string with today's date + 'offset' days."""
+
+    day = datetime.date.today()
     delta = datetime.timedelta(days=offset)
-    day   = day + delta
-    date  = day.strftime('%Y.%m.%d')
+    day = day + delta
+    date = day.strftime('%Y.%m.%d')
     
     return date
 
 
+# Classes:
 class Rsync(object):
-    '''Objects that hold all info about a rsync command.'''
+    """Objects that hold all info about a rsync command."""
 
+    # Constructor:
     def __init__(self, data):
         self.dryrun = False
         self.rsync_base = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
@@ -28,8 +30,10 @@ class Rsync(object):
         self.cmd = '' # final command
         self.data = data
 
+
+    # Public methods:
     def build_cmd(self):
-        '''Build a the rsync command line.'''
+        """Build a the rsync command line."""
 
         if self.data.verbosity > 0:
             print("Building rsync command...")
@@ -60,6 +64,8 @@ class Rsync(object):
             print(self.cmd)
 
     def run(self, opts):
+        """Do run."""
+
         if opts.dryrun:
             print("Actual backup would go here...")
         else:
@@ -68,10 +74,10 @@ class Rsync(object):
                 s = sp.Popen(self.cmd,shell=True)
                 s.communicate()
 
-
 class Data(object):
-    '''Class to hold all miscellaneous general data.'''
+    """Class to hold all miscellaneous general data."""
 
+    # Constructor:
     def __init__(self, opts):
         h  = os.environ['HOME']
         self.home = h                                      # your home dir
@@ -85,8 +91,10 @@ class Data(object):
         self.link_dirs = []
         self.verbosity = opts.verbosity
 
+
+    # Public methods:
     def read_conf(self):
-        '''Read the config file.'''
+        """Read the config file."""
         
         if self.verbosity > 0:
             string = "Reading config... [ {0} ]".format(self.conf_file)
@@ -100,8 +108,7 @@ class Data(object):
             sys.exit()
         
     def find_last_linkable_dirs(self, N=1):
-        '''Find N last available dirs into which rsync will hardlink 
-        unmodified files (max N=20).'''
+        """Find N last available dirs into which rsync will hardlink unmodified files (max N=20)."""
 
         if N > 20:
             N = 20
@@ -128,5 +135,3 @@ class Data(object):
         if not self.link_dirs and self.verbosity > 0:
             print(' [ None ]')
 
-
-#--------------------------------------------------------------------------------#
