@@ -23,67 +23,30 @@ For usage, run:
 
 $ increback.py -h
 
-I use this script interactively.
+I use this script from the command line.
 """
-
-# Standard libs:
-import os
-import sys
-import argparse
 
 # Our libs:
 from libib import core
 
 # Functions:
-def read_args(args=sys.argv[1:]):
-    """Parse command line arguments and return result."""
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("-c", "--config",
-            help="Configuration file. Default: None.",
-            default=None)
-
-    parser.add_argument("-v", "--verbose",
-            dest="verbosity",
-            help="Increase verbosity level by 1. Default: 0 (no output)",
-            action="count",
-            default=0)
-
-    parser.add_argument("-y", "--dryrun",
-            help="Dry run: do nothing, just tell what would be done. Default: real run.",
-            action="store_true",
-            default=False)
-
-
-    return parser.parse_args(args)
-
 def main():
     """Execute this when called as stand-alone."""
     
     # Get command-line options:
-    opts = read_args()
+    opts = core.read_args()
 
     # General variables in centralized Data() object:
     data = core.Data(opts)
-
-    # Make dry runs more verbose:
-    if opts.dryrun:
-        data.verbosity += 1
-
-    #--------------------------------------------------------------------------------#
 
     # Read configurations:
     data.read_conf()
 
     # Check destination is mounted:
-    if not os.path.isdir(data.J['todir']):
-        string = '[ERROR] Destination dir {d} not present!'.format(d=data.J['todir'])
-        print(string)
-        sys.exit()
+    data.check_dest_dir_mounted()
 
-    # Find last available dirs (whithin specified limit) to hardlink to when unaltered:
-    data.find_last_linkable_dirs(N=10)
+    # Find last available dirs to hardlink to when unaltered:
+    data.find_last_linkable_dirs()
         
     # Build rsync command:
     R = core.Rsync(data)
