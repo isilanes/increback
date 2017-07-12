@@ -43,21 +43,14 @@ def main():
     data.read_conf()
 
     # Check destination is mounted:
-    data.check_dest_dir_mounted()
+    #data.check_dest_dir_mounted()
 
     # Find last available dirs to hardlink to when unaltered:
-    data.find_last_linkable_dirs()
+    #data.find_last_linkable_dirs()
         
-    # Build rsync command:
+    # Build rsync command(s) and run:
     R = core.Rsync(data)
-    R.build_cmd()
-        
-    # Make backup:
-    success = R.run(opts)
-
-    # Final message:
-    if not opts.dryrun and success:
-        print('Sucess!')
+    R.run(opts)
 
 
 # If called as stand-alone:

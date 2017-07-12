@@ -54,54 +54,70 @@ class Rsync(object):
     def __init__(self, data):
         self.dryrun = False
         self.rsync_base = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
-        self.exclude_general = os.path.join(data.conf_dir, "global.excludes")
-        self.exclude_particular = '{d.conf_dir}/{d.opts.config}.excludes'.format(d=data)
-        self.cmd = '' # final command
         self.data = data
 
 
     # Public methods:
-    def build_cmd(self):
-        """Build a the rsync command line."""
-
-        if self.data.verbosity > 0:
-            print("Building rsync command...")
-
-        self.cmd  = self.rsync_base
-        self.cmd += ' --exclude-from={s.exclude_general} '.format(s=self)
-        if os.path.isfile(self.exclude_particular):
-            self.cmd += ' --exclude-from={s.exclude_particular} '.format(s=self)
-        
-        if self.data.verbosity > 0:
-            self.cmd += ' -vh --progress '
-
-        if 'rsyncopts' in self.data.conf:
-            self.cmd += self.data.conf['rsyncopts']
-
-        # Link-dirs:
-        for link_dir in self.data.link_dirs:
-            self.cmd += ' --link-dest={d} '.format(d=link_dir)
-
-        # From-dir:
-        self.cmd += ' {d}/ '.format(d=self.data.conf['fromdir'])
-
-        # To-dir:
-        todir = os.path.join(self.data.dest_dir, gimme_date())
-        self.cmd += ' {d}/ '.format(d=todir)
-
-        if self.data.verbosity > 1:
-            print(self.cmd)
-
     def run(self, opts):
         """Do run."""
 
-        if opts.dryrun:
-            print("Actual backup would go here...")
-        else:
-            if opts.verbosity > 0:
-                print("Doing actual backup...")
-                proc = sp.Popen(self.cmd, shell=True)
-                proc.communicate()
+        for item in self.items:
+            if opts.dryrun:
+                print("Actual backup would go here...")
+                print(self.cmd(item))
+            else:
+                if opts.verbosity > 0:
+                    print("Doing actual backup...")
+                    proc = sp.Popen(self.cmd(item), shell=True)
+                    proc.communicate()
+
+    def excludes_for(self, item):
+        """Excludes for particular item 'item'."""
+
+        return os.path.join(self.data.conf_dir, "{i}.excludes".format(i=item))
+
+    def has_particular_excludes(self, item):
+        """Return True if 'item' has particular excludes. False otherwise."""
+
+        return os.path.isfile(self.excludes_for(item))
+
+    def cmd(self, item):
+        """rsync command line."""
+
+        cmd = self.rsync_base
+        cmd += ' --exclude-from={s.exclude_general} '.format(s=self)
+        if self.has_particular_excludes(item):
+            cmd += ' --exclude-from={e} '.format(e=self.excludes_for(item))
+        
+        if self.data.verbosity > 0:
+            cmd += ' -vh --progress '
+
+        # Link-dirs:
+        for link_dir in self.data.link_dirs_for(item):
+            cmd += ' --link-dest={d} '.format(d=link_dir)
+
+        # From-dir:
+        cmd += ' {d}/ '.format(d=self.data.conf[item]['fromdir'])
+
+        # To-dir:
+        todir = os.path.join(self.data.dest_dir_for(item), gimme_date())
+        cmd += ' {d}/ '.format(d=todir)
+
+        return cmd
+
+
+    # Public properties:
+    @property
+    def items(self):
+        """List of items of which we are going to make a backup."""
+
+        return self.data.items
+
+    @property
+    def exclude_general(self):
+        """Excludes for any item."""
+
+        return os.path.join(self.data.conf_dir, "global.excludes")
 
 class Data(object):
     """Class to hold all miscellaneous general data."""
@@ -109,15 +125,8 @@ class Data(object):
     # Constructor:
     def __init__(self, opts):
         h = os.environ['HOME']
-        self.home = h                                        # your home dir
-        self.user = os.environ['LOGNAME']                    # username of script user
         self.conf_dir = '{h}/.increback'.format(h=h)         # configuration dir
-        self.logfile = '{h}/.LOGs/increback.log'.format(h=h) # log file
-        self.mxback  = 240                                   # max number of days to go back
         self.opts = opts # command-line options passed via argparse
-        fn = '{c}.json'.format(c=self.opts.config)
-        self.conf_file = os.path.join(self.conf_dir, fn)
-        self.link_dirs = []
         self.verbosity = opts.verbosity
         
         # Make dry runs more verbose:
@@ -168,6 +177,35 @@ class Data(object):
         if not self.link_dirs and self.verbosity > 0:
             print(' [ None ]')
 
+    def link_dirs_for(self, item):
+        """Return N last available dirs into which rsync will hardlink unmodified files (max N=20), for 'item'."""
+
+        # Use amount specified in options, or 20, whichever is lowest:
+        N = self.opts.nlink
+        if N > 20:
+            N = 20
+
+        if self.verbosity > 0:
+            print("Determining last linkable dirs (up to {n} days back):".format(n=self.max_days_back_for(item)))
+        
+        link_dirs = []
+        for i in range(1, self.max_days_back_for(item)+1):
+            gdi = gimme_date(-i)
+            path = os.path.join(self.dest_dir_for(item), gdi)
+            if os.path.isdir(path):
+                if self.verbosity > 0:
+                    string = '  {d} '.format(d=path)
+                print(string)
+
+                # Add path to list:
+                link_dirs.append(path)
+
+                # If N matches found already, exit early:
+                if len(link_dirs) >= N:
+                    break
+
+        return link_dirs
+
     def check_dest_dir_mounted(self):
         """Check whether destination directory is mounted."""
 
@@ -176,6 +214,15 @@ class Data(object):
             print(string)
             sys.exit()
 
+    def max_days_back_for(self, item):
+        """Maximum amount of days to go back looking for linkable directories."""
+
+        return self.conf[item]["max_days_back"]
+
+    def dest_dir_for(self, item):
+        """Base destination directory for making the backup, for 'item'."""
+
+        return self.conf[item]["todir"]
 
 
     # Public properties:
@@ -183,16 +230,20 @@ class Data(object):
     def is_dest_dir_mounted(self):
         """Whether destination directory is mounted or not."""
 
-        return os.path.isidir(self.dest_dir)
+        return os.path.isdir(self.dest_dir)
 
     @property
-    def dest_dir(self):
-        """Base destination directory for making the backup."""
+    def conf_file(self):
+        """Full path to selected configuration file."""
 
-        return self.conf["todir"]
+        if self.opts.config:
+            return os.path.join(self.conf_dir, "{c}.json".format(c=self.opts.config))
+        else:
+            return os.path.join(self.conf_dir, "conf.json")
 
     @property
-    def max_days_back(self):
-        """Maximum amount of days to go back looking for linkable directories."""
+    def items(self):
+        """List of items of which we are going to make a backup."""
 
-        return self.conf["max_days_back"]
+        return [item for item, iconf in self.conf.items() if "active" in iconf and iconf["active"]]
+
