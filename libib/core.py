@@ -1,13 +1,14 @@
 # Standard libs:
 import os
 import sys
+import glob
 import json
 import datetime
 import argparse
 import subprocess as sp
 
 # Functions:
-def read_args(args=sys.argv[1:]):
+def parse_args(args=sys.argv[1:]):
     """Parse command line arguments and return result."""
 
     parser = argparse.ArgumentParser()
@@ -35,15 +36,13 @@ def read_args(args=sys.argv[1:]):
 
     return parser.parse_args(args)
 
-def gimme_date(offset=0):
-    """Return YYYY.MM.DD string with today's date + 'offset' days."""
-
-    day = datetime.date.today()
+def timestamp(day=datetime.date.today(), offset=0):
+    """Return timestamp string (YYYY.MM.DD), for day 'day' (default, today).
+    Optionally, add 'offset' days of offset (e.g. offset=1 means tomorrow).
+    """
     delta = datetime.timedelta(days=offset)
-    day = day + delta
-    date = day.strftime('%Y.%m.%d')
-    
-    return date
+
+    return (day + delta).strftime('%Y.%m.%d')
 
 
 # Classes:
@@ -51,15 +50,21 @@ class Rsync(object):
     """Objects that hold all info about a rsync command."""
 
     # Constructor:
-    def __init__(self, data):
+    def __init__(self, data, item):
+        self.data = data
+        self.item = item
         self.dryrun = False
         self.rsync_base = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
-        self.data = data
 
 
     # Public methods:
     def run(self, opts):
         """Do run."""
+
+        if self.data.link_dirs_for(self.item):
+            print("Determining last linkable dirs for [ music ]:".format(item=self.item))
+            for ldir in self.data.link_dirs_for(self.item):
+                print(ldir)
 
         for item in self.items:
             if opts.dryrun:
@@ -100,7 +105,7 @@ class Rsync(object):
         cmd += ' {d}/ '.format(d=self.data.conf[item]['fromdir'])
 
         # To-dir:
-        todir = os.path.join(self.data.dest_dir_for(item), gimme_date())
+        todir = os.path.join(self.data.dest_dir_for(item), timestamp())
         cmd += ' {d}/ '.format(d=todir)
 
         return cmd
@@ -125,7 +130,7 @@ class Data(object):
     # Constructor:
     def __init__(self, opts):
         h = os.environ['HOME']
-        self.conf_dir = '{h}/.increback'.format(h=h)         # configuration dir
+        self.conf_dir = '{h}/.increback'.format(h=h) # configuration dir
         self.opts = opts # command-line options passed via argparse
         self.verbosity = opts.verbosity
         
@@ -133,14 +138,17 @@ class Data(object):
         if opts.dryrun:
             self.verbosity += 1
 
+        # Cache vars:
+        self.__link_dirs_for = {}
+
 
     # Public methods:
     def read_conf(self):
         """Read the config file."""
         
         if self.verbosity > 0:
-            string = "Reading config... [ {s.conf_file} ]".format(s=self)
-            print(string)
+            msg = "Reading configuration from: {s.conf_file}".format(s=self)
+            print(msg)
 
         try:
             with open(self.conf_file) as f:
@@ -149,95 +157,47 @@ class Data(object):
             print("Could not load config file [ {s.conf_file} ]".format(s=self))
             sys.exit()
         
-    def find_last_linkable_dirs(self):
-        """Find N last available dirs into which rsync will hardlink unmodified files (max N=20)."""
-
-        # Use amount specified in options, or 20, whichever is lowest:
-        N = self.opts.nlink
-        if N > 20:
-            N = 20
-
-        if self.verbosity > 0:
-            print("Determining last linkable dirs (up to {s.max_days_back} days back):".format(s=self))
-        
-        self.link_dirs = []
-        for i in range(1, self.max_days_back+1):
-            gdi = gimme_date(-i)
-            dir = os.path.join(self.dest_dir, gdi)
-            if os.path.isdir(dir):
-                if self.verbosity > 0:
-                    string = '  {d} '.format(d=dir)
-                print(string)
-
-                # If N matches found already, exit early:
-                self.link_dirs.append(dir)
-                if len(self.link_dirs) >= N:
-                    break
-
-        if not self.link_dirs and self.verbosity > 0:
-            print(' [ None ]')
-
     def link_dirs_for(self, item):
         """Return N last available dirs into which rsync will hardlink unmodified files (max N=20), for 'item'."""
 
-        # Use amount specified in options, or 20, whichever is lowest:
-        N = self.opts.nlink
-        if N > 20:
-            N = 20
+        if not item in self.__link_dirs_for:
+            patt = os.path.join(self.dest_dir_for(item), "????.??.??")
+            self.__link_dirs_for[item] = sorted(glob.glob(patt), reverse=True)[:self.max_link_dirs_for(item)]
 
-        if self.verbosity > 0:
-            print("Determining last linkable dirs (up to {n} days back):".format(n=self.max_days_back_for(item)))
-        
-        link_dirs = []
-        for i in range(1, self.max_days_back_for(item)+1):
-            gdi = gimme_date(-i)
-            path = os.path.join(self.dest_dir_for(item), gdi)
-            if os.path.isdir(path):
-                if self.verbosity > 0:
-                    string = '  {d} '.format(d=path)
-                print(string)
+        return self.__link_dirs_for[item]
 
-                # Add path to list:
-                link_dirs.append(path)
-
-                # If N matches found already, exit early:
-                if len(link_dirs) >= N:
-                    break
-
-        return link_dirs
-
-    def check_dest_dir_mounted(self):
+    def check_dest_dir_mounted(self, item):
         """Check whether destination directory is mounted."""
 
-        if not self.is_dest_dir_mounted:
-            string = '[ERROR] Destination dir {s.dest_dir} not present!'.format(s=self)
-            print(string)
+        if not self.is_dest_dir_mounted_for(item):
+            msg = '[ERROR] Destination dir {d} not present!'.format(d=self.dest_dir_for(item))
+            print(msg)
             sys.exit()
 
-    def max_days_back_for(self, item):
-        """Maximum amount of days to go back looking for linkable directories."""
-
-        return self.conf[item]["max_days_back"]
+    def max_link_dirs_for(self, item):
+        """Maximum amount of linkable directories for 'item'.
+        Use amount specified in options, or 20, whichever is lowest.
+        """
+        return min(20, self.opts.nlink)
 
     def dest_dir_for(self, item):
         """Base destination directory for making the backup, for 'item'."""
 
         return self.conf[item]["todir"]
 
+    def is_dest_dir_mounted_for(self, item):
+        """Whether destination directory is mounted or not, for item 'item'."""
+
+        return os.path.isdir(self.dest_dir_for(item))
+
 
     # Public properties:
-    @property
-    def is_dest_dir_mounted(self):
-        """Whether destination directory is mounted or not."""
-
-        return os.path.isdir(self.dest_dir)
-
     @property
     def conf_file(self):
         """Full path to selected configuration file."""
 
         if self.opts.config:
-            return os.path.join(self.conf_dir, "{c}.json".format(c=self.opts.config))
+            return self.opts.config
         else:
             return os.path.join(self.conf_dir, "conf.json")
 

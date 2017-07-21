@@ -1,6 +1,6 @@
 """
 increback
-(c) 2008-2014,2017, Iñaki Silanes
+(c) 2008-2014,2017. Iñaki Silanes
 
 LICENSE
 
@@ -34,23 +34,20 @@ def main():
     """Execute this when called as stand-alone."""
     
     # Get command-line options:
-    opts = core.read_args()
+    opts = core.parse_args()
 
-    # General variables in centralized Data() object:
+    # General variables in centralized Data() object, and initialize it:
     data = core.Data(opts)
-
-    # Read configurations:
     data.read_conf()
 
-    # Check destination is mounted:
-    #data.check_dest_dir_mounted()
+    # Perform backup of each element:
+    for  item in data.items:
+        # Check destination is mounted:
+        data.check_dest_dir_mounted(item)
 
-    # Find last available dirs to hardlink to when unaltered:
-    #data.find_last_linkable_dirs()
-        
-    # Build rsync command(s) and run:
-    R = core.Rsync(data)
-    R.run(opts)
+        # Build rsync command(s) and run:
+        R = core.Rsync(data, item)
+        R.run(opts)
 
 
 # If called as stand-alone:
