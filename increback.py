@@ -36,9 +36,8 @@ def main():
     # Get command-line options:
     opts = core.parse_args()
 
-    # General variables in centralized Data() object, and initialize it:
+    # General variables in centralized Data() object:
     data = core.Data(opts)
-    data.read_conf()
 
     # Perform backup of each element:
     for  item in data.items:

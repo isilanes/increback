@@ -33,6 +33,11 @@ def parse_args(args=sys.argv[1:]):
             type=int,
             default=10)
 
+    parser.add_argument("--no-colors",
+            help="Do not use color output in console. Default: use colors.",
+            action="store_true",
+            default=False)
+
 
     return parser.parse_args(args)
 
@@ -62,7 +67,9 @@ class Rsync(object):
         """Do run."""
 
         if self.data.link_dirs_for(self.item):
-            print("Determining last linkable dirs for [ music ]:".format(item=self.item))
+            citem = "[{item}]".format(item=self.item)
+            citem = self.data.msg.name_color(citem)
+            print("Determining last linkable dirs for {item}:".format(item=citem))
             for ldir in self.data.link_dirs_for(self.item):
                 print(ldir)
 
@@ -102,7 +109,7 @@ class Rsync(object):
             cmd += ' --link-dest={d} '.format(d=link_dir)
 
         # From-dir:
-        cmd += ' {d}/ '.format(d=self.data.conf[item]['fromdir'])
+        cmd += ' {d}/ '.format(d=self.data.from_dir_for(item))
 
         # To-dir:
         todir = os.path.join(self.data.dest_dir_for(item), timestamp())
@@ -140,22 +147,29 @@ class Data(object):
 
         # Cache vars:
         self.__link_dirs_for = {}
+        
+        # Read configuration:
+        self.conf = self.read_conf()
+        if not self.conf:
+            sys.exit()
+
+        # Text stuff:
+        self.msg = Messages(opts, self.conf)
 
 
     # Public methods:
     def read_conf(self):
         """Read the config file."""
         
-        if self.verbosity > 0:
-            msg = "Reading configuration from: {s.conf_file}".format(s=self)
-            print(msg)
+        msg = "Reading configuration from: {s.conf_file}".format(s=self)
+        print(msg)
 
         try:
             with open(self.conf_file) as f:
-                self.conf = json.load(f)
+                return json.load(f)
         except:
             print("Could not load config file [ {s.conf_file} ]".format(s=self))
-            sys.exit()
+            return None
         
     def link_dirs_for(self, item):
         """Return N last available dirs into which rsync will hardlink unmodified files (max N=20), for 'item'."""
@@ -170,7 +184,9 @@ class Data(object):
         """Check whether destination directory is mounted."""
 
         if not self.is_dest_dir_mounted_for(item):
-            msg = '[ERROR] Destination dir {d} not present!'.format(d=self.dest_dir_for(item))
+            error = self.msg.error_color("[ERROR]")
+            dest = self.msg.name_color(self.dest_dir_for(item))
+            msg = '{e} Destination dir {d} not present!'.format(e=error, d=dest)
             print(msg)
             sys.exit()
 
@@ -183,7 +199,12 @@ class Data(object):
     def dest_dir_for(self, item):
         """Base destination directory for making the backup, for 'item'."""
 
-        return self.conf[item]["todir"]
+        return self.conf["items"][item]["todir"]
+
+    def from_dir_for(self, item):
+        """Base origin directory for making the backup, for 'item'."""
+
+        return self.conf["items"][item]["fromdir"]
 
     def is_dest_dir_mounted_for(self, item):
         """Whether destination directory is mounted or not, for item 'item'."""
@@ -205,5 +226,39 @@ class Data(object):
     def items(self):
         """List of items of which we are going to make a backup."""
 
-        return [item for item, iconf in self.conf.items() if "active" in iconf and iconf["active"]]
+        return [item for item, iconf in self.conf["items"].items() if "active" in iconf and iconf["active"]]
+
+class Messages(object):
+    """Class to hold text stuff."""
+
+    # Constructor:
+    def __init__(self, opts, conf):
+        self.opts = opts
+        self.conf = conf
+
+    # Public methods:
+    def which_color(self, text, which):
+        """Return 'text' with color for 'which' type of text."""
+
+        if self.opts.no_colors or which not in self.conf["colors"] or not self.conf["colors"][which]:
+            return text
+
+        return Messages.colorize(text, self.conf["colors"][which])
+
+    def error_color(self, text):
+        """Return 'text' with color for error."""
+
+        return self.which_color(text, "error")
+
+    def name_color(self, text):
+        """Return 'text' with color for name."""
+
+        return self.which_color(text, "name")
+
+
+    # Static methods:
+    def colorize(text, color_number):
+        """Return colorized version of 'text', with terminal color 'color_number' (31, 32...)."""
+
+        return "\033[{n}m{t}\033[0m".format(t=text, n=color_number)
 
