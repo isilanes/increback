@@ -1,6 +1,13 @@
 {
-    "user": "whoever",
-    "fromdir": "/home/something",
-    "todir": "/backup/something_else",
-    "max_days_back": 30
+    "items": {
+        "example": {
+            "active": true,
+            "fromdir": "/myhome/whatever",
+            "todir": "/myhd/Backup/whatever"
+        }
+    },
+    "colors": {
+        "error": 31,
+        "name": 36
+    }
 }

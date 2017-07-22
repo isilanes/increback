@@ -51,7 +51,7 @@ def timestamp(day=datetime.date.today(), offset=0):
 
 
 # Classes:
-class Rsync(object):
+class Sync(object):
     """Objects that hold all info about a rsync command."""
 
     # Constructor:
@@ -73,15 +73,13 @@ class Rsync(object):
             for ldir in self.data.link_dirs_for(self.item):
                 print(ldir)
 
-        for item in self.items:
-            if opts.dryrun:
-                print("Actual backup would go here...")
-                print(self.cmd(item))
-            else:
-                if opts.verbosity > 0:
-                    print("Doing actual backup...")
-                    proc = sp.Popen(self.cmd(item), shell=True)
-                    proc.communicate()
+        if opts.dryrun:
+            print("Actual backup would go here...")
+            print(self.cmd(self.item))
+        else:
+            print("Doing actual backup...")
+            proc = sp.Popen(self.cmd(self.item), shell=True)
+            proc.communicate()
 
     def excludes_for(self, item):
         """Excludes for particular item 'item'."""
@@ -112,19 +110,12 @@ class Rsync(object):
         cmd += ' {d}/ '.format(d=self.data.from_dir_for(item))
 
         # To-dir:
-        todir = os.path.join(self.data.dest_dir_for(item), timestamp())
-        cmd += ' {d}/ '.format(d=todir)
+        cmd += ' {d}/ '.format(d=self.data.backup_dir_for(item))
 
         return cmd
 
 
     # Public properties:
-    @property
-    def items(self):
-        """List of items of which we are going to make a backup."""
-
-        return self.data.items
-
     @property
     def exclude_general(self):
         """Excludes for any item."""
@@ -140,6 +131,7 @@ class Data(object):
         self.conf_dir = '{h}/.increback'.format(h=h) # configuration dir
         self.opts = opts # command-line options passed via argparse
         self.verbosity = opts.verbosity
+        self.timestamp = timestamp()
         
         # Make dry runs more verbose:
         if opts.dryrun:
@@ -206,10 +198,20 @@ class Data(object):
 
         return self.conf["items"][item]["fromdir"]
 
+    def backup_dir_for(self, item):
+        """Directory where backup will be made, for 'item'."""
+
+        return os.path.join(self.dest_dir_for(item), self.timestamp)
+
     def is_dest_dir_mounted_for(self, item):
         """Whether destination directory is mounted or not, for item 'item'."""
 
         return os.path.isdir(self.dest_dir_for(item))
+
+    def is_backup_done_for(self, item):
+        """Whether today's backup has been done for item 'item'."""
+
+        return os.path.isdir(self.backup_dir_for(item))
 
 
     # Public properties:

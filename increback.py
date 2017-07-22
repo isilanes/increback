@@ -44,9 +44,16 @@ def main():
         # Check destination is mounted:
         data.check_dest_dir_mounted(item)
 
+        # Skip if backup done today:
+        if data.is_backup_done_for(item):
+            citem = "[{item}]".format(item=item)
+            citem = data.msg.name_color(citem)
+            print("Item {item} already backed up. Skipping...".format(item=citem))
+            continue
+
         # Build rsync command(s) and run:
-        R = core.Rsync(data, item)
-        R.run(opts)
+        sync = core.Sync(data, item)
+        sync.run(opts)
 
 
 # If called as stand-alone:
