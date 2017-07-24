@@ -1,29 +1,6 @@
 """
 increback
-(c) 2008-2014,2017. Iñaki Silanes
-
-LICENSE
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License (version 2), as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-for more details (http://www.gnu.org/licenses/gpl.txt).
-
-DESCRIPTION
-
-It makes incremental backups with rsync.
-
-USAGE
-
-For usage, run:
-
-$ increback.py -h
-
-I use this script from the command line.
+(c) 2008-2014, 2017. Iñaki Silanes
 """
 
 # Our libs:
