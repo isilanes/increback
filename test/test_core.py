@@ -3,6 +3,7 @@ import sys
 import mock
 import hashlib
 import unittest
+import argparse
 from datetime import datetime
 
 # Our libs:
@@ -21,7 +22,7 @@ class TestFunctions(unittest.TestCase):
         pass
 
 
-    # Test timestamp:
+    # Test timestamp():
     def test_timestamp_default(self):
         ret = core.timestamp()
 
@@ -48,6 +49,12 @@ class TestFunctions(unittest.TestCase):
         for day, offset, string in inputs:
             ret = core.timestamp(day=day, offset=offset)
             self.assertEqual(ret, string)
+
+
+    # Test parse_args():
+    def test_parse_args(self):
+        ret = core.parse_args([])
+        self.assertIsInstance(ret, argparse.Namespace)
 
 
 # Main loop:
