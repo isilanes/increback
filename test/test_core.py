@@ -56,6 +56,25 @@ class TestFunctions(unittest.TestCase):
         ret = core.parse_args([])
         self.assertIsInstance(ret, argparse.Namespace)
 
+    def test_parse_args_config(self):
+        cases = [
+            (["--config", "wtf.json"], "wtf.json"),
+            ([], None),
+        ]
+        for args, value in cases:
+            ret = core.parse_args(args)
+            self.assertEqual(ret.config, value)
+
+    def test_parse_args_dryrun(self):
+        cases = [
+            (["-y"], True),
+            (["--dry-run"], True),
+            ([], False),
+        ]
+        for args, value in cases:
+            ret = core.parse_args(args)
+            self.assertEqual(ret.dry_run, value)
+
 
 # Main loop:
 if __name__ == "__main__":

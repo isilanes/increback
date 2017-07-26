@@ -23,7 +23,7 @@ def parse_args(args=sys.argv[1:]):
             action="count",
             default=0)
 
-    parser.add_argument("-y", "--dryrun",
+    parser.add_argument("-y", "--dry-run",
             help="Dry run: do nothing, just tell what would be done. Default: real run.",
             action="store_true",
             default=False)
