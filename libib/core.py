@@ -3,6 +3,7 @@ import os
 import sys
 import glob
 import json
+import logging
 import datetime
 import argparse
 import subprocess as sp
@@ -51,25 +52,44 @@ def timestamp(day=datetime.date.today(), offset=0):
 
 
 # Classes:
-class Sync(object):
+class Base(object):
+    """Superclass for others."""
+
+    def __init__(self):
+        # Logger object:
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', 
+                datefmt="%Y-%m-%d %H:%M:%S")
+
+        # Console output handler:
+        ch = logging.StreamHandler()
+        ch.setFormatter(formatter)
+        ch.setLevel(logging.DEBUG)
+        self.logger.addHandler(ch)
+
+class Sync(Base):
     """Objects that hold all info about a rsync command."""
+    
+    RSYNC_BASE = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
 
     # Constructor:
     def __init__(self, data, item):
+        super().__init__()
+
         self.data = data
         self.item = item
-        self.dryrun = False
-        self.rsync_base = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
+        self.logger.info("ola k ase")
 
 
     # Public methods:
     def run(self, opts):
         """Do run."""
 
+        print("Determining last linkable dirs for {item}:".format(item=citem))
         if self.data.link_dirs_for(self.item):
             citem = "[{item}]".format(item=self.item)
             citem = self.data.msg.name_color(citem)
-            print("Determining last linkable dirs for {item}:".format(item=citem))
             for ldir in self.data.link_dirs_for(self.item):
                 print(ldir)
 
@@ -94,7 +114,7 @@ class Sync(object):
     def cmd(self, item):
         """rsync command line."""
 
-        cmd = self.rsync_base
+        cmd = self.RSYNC_BASE
         cmd += ' --exclude-from={s.exclude_general} '.format(s=self)
         if self.has_particular_excludes(item):
             cmd += ' --exclude-from={e} '.format(e=self.excludes_for(item))
@@ -122,7 +142,7 @@ class Sync(object):
 
         return os.path.join(self.data.conf_dir, "global.excludes")
 
-class Data(object):
+class Data(Base):
     """Class to hold all miscellaneous general data."""
 
     # Constructor:
@@ -133,8 +153,11 @@ class Data(object):
         self.verbosity = opts.verbosity
         self.timestamp = timestamp()
         
+        # Text stuff:
+        self.msg = Logger()
+
         # Make dry runs more verbose:
-        if opts.dryrun:
+        if opts.dry_run:
             self.verbosity += 1
 
         # Cache vars:
@@ -145,16 +168,13 @@ class Data(object):
         if not self.conf:
             sys.exit()
 
-        # Text stuff:
-        self.msg = Messages(opts, self.conf)
-
 
     # Public methods:
     def read_conf(self):
         """Read the config file."""
         
         msg = "Reading configuration from: {s.conf_file}".format(s=self)
-        print(msg)
+        self.msg.info(msg)
 
         try:
             with open(self.conf_file) as f:
@@ -230,22 +250,36 @@ class Data(object):
 
         return [item for item, iconf in self.conf["items"].items() if "active" in iconf and iconf["active"]]
 
-class Messages(object):
+class Logger(object):
     """Class to hold text stuff."""
 
     # Constructor:
-    def __init__(self, opts, conf):
-        self.opts = opts
-        self.conf = conf
+    def __init__(self):
+        #self.opts = opts
+        #self.conf = conf
+
+        # Logger object:
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', 
+                datefmt="%Y-%m-%d %H:%M:%S")
+
+        # Console output handler:
+        ch = logging.StreamHandler()
+        ch.setFormatter(formatter)
+        ch.setLevel(logging.DEBUG)
+        self.logger.addHandler(ch)
+
 
     # Public methods:
     def which_color(self, text, which):
         """Return 'text' with color for 'which' type of text."""
 
-        if self.opts.no_colors or which not in self.conf["colors"] or not self.conf["colors"][which]:
-            return text
-
-        return Messages.colorize(text, self.conf["colors"][which])
+        #if not self.use_colors or which not in self.conf["colors"] or not self.conf["colors"][which]:
+        if self.use_colors:
+            return Logger.colorize(text, self.color_for(which))
+        
+        return text
 
     def error_color(self, text):
         """Return 'text' with color for error."""
@@ -257,10 +291,34 @@ class Messages(object):
 
         return self.which_color(text, "name")
 
+    def info(self, text):
+        """Log (print) 'text' as info."""
+
+        self.logger.info(text)
+
+    def color_for(self, which):
+        """Return color for 'which'."""
+
+        # return self.conf["colors"][which]
+        return 31
+
+
+    # Public properties:
+    @property
+    def use_colors(self):
+        """Return True if colors should be used in terminal."""
+
+        return True
+
 
     # Static methods:
-    def colorize(text, color_number):
-        """Return colorized version of 'text', with terminal color 'color_number' (31, 32...)."""
+    @staticmethod
+    def colorize(text, color_number=None):
+        """Return colorized version of 'text', with terminal color 'color_number' (31, 32...).
+        Return bare text if 'color_number' is None.
+        """
+        if color_number is None:
+            return text
 
         return "\033[{n}m{t}\033[0m".format(t=text, n=color_number)
 

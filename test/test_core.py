@@ -26,7 +26,7 @@ class TestFunctions(unittest.TestCase):
     def test_timestamp_default(self):
         ret = core.timestamp()
 
-        self.assertRegexpMatches(ret, "^\d{4}\.\d{2}\.\d{2}$")
+        self.assertRegex(ret, "^\d{4}\.\d{2}\.\d{2}$")
 
     def test_timestamp_feed_date(self):
         inputs = [
@@ -75,6 +75,36 @@ class TestFunctions(unittest.TestCase):
             ret = core.parse_args(args)
             self.assertEqual(ret.dry_run, value)
 
+class TestSync(unittest.TestCase):
+    """Test Sync() class."""
+
+    # Setup and teardown:
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+
+    # Test timestamp():
+    def test_constructor(self):
+        # Assemble:
+        cases = (
+            ({}, "something"),
+        )
+
+        for data, item in cases:
+            # Act:
+            sync = core.Sync(data, item)
+
+            # Assert:
+            self.assertEqual(sync.item, item)
+            self.assertEqual(sync.data, data)
+    
+
+    # Test run():
+    def test_run(self):
+        pass
 
 # Main loop:
 if __name__ == "__main__":
