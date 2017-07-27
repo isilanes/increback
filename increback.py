@@ -4,7 +4,7 @@ increback
 """
 
 # Our libs:
-from libib import core
+from libib import core, logworks
 
 # Functions:
 def main():
@@ -12,6 +12,9 @@ def main():
     
     # Get command-line options:
     opts = core.parse_args()
+
+    # Logger object:
+    logger = logworks.Logger(opts.log_conf, opts.no_colors)
 
     # General variables in centralized Data() object:
     data = core.Data(opts)

@@ -8,6 +8,9 @@ import datetime
 import argparse
 import subprocess as sp
 
+# Our libs:
+from libib import logworks
+
 # Functions:
 def parse_args(args=sys.argv[1:]):
     """Parse command line arguments and return result."""
@@ -16,6 +19,10 @@ def parse_args(args=sys.argv[1:]):
 
     parser.add_argument("-c", "--config",
             help="Configuration file. Default: None.",
+            default=None)
+
+    parser.add_argument("--log-conf",
+            help="Logger configuration file. Default: None.",
             default=None)
 
     parser.add_argument("-v", "--verbose",
@@ -52,23 +59,7 @@ def timestamp(day=datetime.date.today(), offset=0):
 
 
 # Classes:
-class Base(object):
-    """Superclass for others."""
-
-    def __init__(self):
-        # Logger object:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', 
-                datefmt="%Y-%m-%d %H:%M:%S")
-
-        # Console output handler:
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        ch.setLevel(logging.DEBUG)
-        self.logger.addHandler(ch)
-
-class Sync(Base):
+class Sync(object):
     """Objects that hold all info about a rsync command."""
     
     RSYNC_BASE = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
@@ -142,7 +133,7 @@ class Sync(Base):
 
         return os.path.join(self.data.conf_dir, "global.excludes")
 
-class Data(Base):
+class Data(object):
     """Class to hold all miscellaneous general data."""
 
     # Constructor:
@@ -154,7 +145,7 @@ class Data(Base):
         self.timestamp = timestamp()
         
         # Text stuff:
-        self.msg = Logger()
+        self.msg = logworks.Logger()
 
         # Make dry runs more verbose:
         if opts.dry_run:
@@ -249,76 +240,4 @@ class Data(Base):
         """List of items of which we are going to make a backup."""
 
         return [item for item, iconf in self.conf["items"].items() if "active" in iconf and iconf["active"]]
-
-class Logger(object):
-    """Class to hold text stuff."""
-
-    # Constructor:
-    def __init__(self):
-        #self.opts = opts
-        #self.conf = conf
-
-        # Logger object:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', 
-                datefmt="%Y-%m-%d %H:%M:%S")
-
-        # Console output handler:
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        ch.setLevel(logging.DEBUG)
-        self.logger.addHandler(ch)
-
-
-    # Public methods:
-    def which_color(self, text, which):
-        """Return 'text' with color for 'which' type of text."""
-
-        #if not self.use_colors or which not in self.conf["colors"] or not self.conf["colors"][which]:
-        if self.use_colors:
-            return Logger.colorize(text, self.color_for(which))
-        
-        return text
-
-    def error_color(self, text):
-        """Return 'text' with color for error."""
-
-        return self.which_color(text, "error")
-
-    def name_color(self, text):
-        """Return 'text' with color for name."""
-
-        return self.which_color(text, "name")
-
-    def info(self, text):
-        """Log (print) 'text' as info."""
-
-        self.logger.info(text)
-
-    def color_for(self, which):
-        """Return color for 'which'."""
-
-        # return self.conf["colors"][which]
-        return 31
-
-
-    # Public properties:
-    @property
-    def use_colors(self):
-        """Return True if colors should be used in terminal."""
-
-        return True
-
-
-    # Static methods:
-    @staticmethod
-    def colorize(text, color_number=None):
-        """Return colorized version of 'text', with terminal color 'color_number' (31, 32...).
-        Return bare text if 'color_number' is None.
-        """
-        if color_number is None:
-            return text
-
-        return "\033[{n}m{t}\033[0m".format(t=text, n=color_number)
 
