@@ -1,0 +1,9 @@
+{
+    "colorize": true,
+    "colors": {
+        "info": 34,
+        "warning": 33,
+        "error": 31,
+        "name": 36
+    }
+}
