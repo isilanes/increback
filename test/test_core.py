@@ -90,12 +90,12 @@ class TestSync(unittest.TestCase):
     def test_constructor(self):
         # Assemble:
         cases = (
-            ({}, "something"),
+            ({}, "something", None),
         )
 
-        for data, item in cases:
+        for data, item, logger in cases:
             # Act:
-            sync = core.Sync(data, item)
+            sync = core.Sync(data, item, logger)
 
             # Assert:
             self.assertEqual(sync.item, item)
@@ -103,9 +103,48 @@ class TestSync(unittest.TestCase):
     
 
     # Test run():
-    def test_run(self):
-        pass
+    def test_run_dry(self):
+        # Prepare:
+        linkables = ["rubbish", "test", "123dir"]
+        data = mock.Mock()
+        data.link_dirs_for.return_value = linkables
+        item = "nothing"
+        logger = None
+        opts = mock.Mock()
+        opts.dryrun = True
+        sync = core.Sync(data, item, logger)
+        sync.info = mock.Mock()
+        sync.cmd = mock.Mock()
 
-# Main loop:
-if __name__ == "__main__":
-    unittest.main()
+        # Run:
+        with mock.patch("subprocess.Popen") as mock_popen:
+            sync.run(opts)
+
+        # Assert:
+        self.assertEqual(sync.info.call_count, len(linkables)+3)
+        sync.cmd.assert_called_once()
+        mock_popen.assert_not_called()
+
+    def test_run_true(self):
+        # Prepare:
+        linkables = ["rubbish", "test", "123dir"]
+        data = mock.Mock()
+        data.link_dirs_for.return_value = linkables
+        item = "nothing"
+        logger = None
+        opts = mock.Mock()
+        opts.dryrun = False
+        sync = core.Sync(data, item, logger)
+        sync.info = mock.Mock()
+        sync.cmd = mock.Mock()
+
+        # Run:
+        with mock.patch("subprocess.Popen") as mock_popen:
+            sync.run(opts)
+
+        # Assert:
+        self.assertEqual(sync.info.call_count, len(linkables)+2)
+        sync.cmd.assert_called_once()
+        mock_popen.assert_called_once()
+        self.assertEqual(mock_popen.call_args[0][0], sync.cmd(item))
+

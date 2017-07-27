@@ -7,13 +7,8 @@ class Logger(object):
     """Class to hold logging stuff."""
     
     # Class variables:
-    PLAIN_FORMATTER = logging.Formatter(
-            fmt='{asctime} [{levelname}] {message}',
-            datefmt="%Y-%m-%d %H:%M:%S",
-            style="{")
-
-    COLOR_FORMATTER = logging.Formatter(
-            fmt='{asctime} \033[{clevel}m[{levelname}]\033[0m {message}',
+    FORMATTER = logging.Formatter(
+            fmt='{asctime} {colored_levelname} {message}',
             datefmt="%Y-%m-%d %H:%M:%S",
             style="{")
 
@@ -32,10 +27,7 @@ class Logger(object):
 
         # Console output handler:
         ch = logging.StreamHandler()
-        if self.use_colors:
-            ch.setFormatter(self.COLOR_FORMATTER)
-        else:
-            ch.setFormatter(self.PLAIN_FORMATTER)
+        ch.setFormatter(self.FORMATTER)
         ch.setLevel(logging.DEBUG)
         self.logger.addHandler(ch)
 
@@ -59,7 +51,7 @@ class Logger(object):
         """Log (print) 'text' as info."""
 
         extra = {
-            "clevel": self._color_for("info"),
+            "colored_levelname": self.with_info_color("[INFO]"),
         }
 
         self.logger.info(text, extra=extra)
@@ -68,7 +60,7 @@ class Logger(object):
         """Log (print) 'text' as warning."""
 
         extra = {
-            "clevel": self._color_for("warning"),
+            "colored_levelname": self.with_warning_color("[WARNING]"),
         }
 
         self.logger.warning(text, extra=extra)
@@ -77,15 +69,30 @@ class Logger(object):
         """Log (print) 'text' as error."""
 
         extra = {
-            "clevel": self._color_for("error"),
+            "colored_levelname": self.with_error_color("[ERROR]"),
         }
 
         self.logger.error(text, extra=extra)
 
-    def name_color(self, text):
+    def with_name_color(self, text):
         """Return 'text' with color for name."""
 
         return self._colorize_as(text, "name")
+
+    def with_info_color(self, text):
+        """Return 'text' with color for 'info'."""
+
+        return self._colorize_as(text, "info")
+
+    def with_error_color(self, text):
+        """Return 'text' with color for 'error'."""
+
+        return self._colorize_as(text, "error")
+
+    def with_warning_color(self, text):
+        """Return 'text' with color for 'warning'."""
+
+        return self._colorize_as(text, "warning")
 
 
     # Private methods:

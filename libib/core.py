@@ -59,36 +59,56 @@ def timestamp(day=datetime.date.today(), offset=0):
 
 
 # Classes:
-class Sync(object):
+class Base(object):
+    """Generic superclass."""
+
+    def __init__(self, logger):
+        self.logger = logger
+
+    def info(self, msg):
+        """Output 'msg' message with logger object as info, or just print if none."""
+
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(msg)
+
+    def error(self, msg):
+        """Output 'msg' message with logger object as error, or just print if none."""
+
+        if self.logger:
+            self.logger.error(msg)
+        else:
+            print(msg)
+
+class Sync(Base):
     """Objects that hold all info about a rsync command."""
     
     RSYNC_BASE = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
 
     # Constructor:
     def __init__(self, data, item, logger=None):
-        super().__init__()
+        super().__init__(logger)
 
         self.data = data
         self.item = item
-        self.logger = logger
 
 
     # Public methods:
     def run(self, opts):
         """Do run."""
 
-        print("Determining last linkable dirs for {item}:".format(item=citem))
+        colored_item = self.data.with_name_color("[{s.item}]".format(s=self))
+        self.info("Determining last linkable dirs for {item}:".format(item=colored_item))
         if self.data.link_dirs_for(self.item):
-            citem = "[{item}]".format(item=self.item)
-            citem = self.data.msg.name_color(citem)
             for ldir in self.data.link_dirs_for(self.item):
-                print(ldir)
+                self.info(ldir)
 
         if opts.dryrun:
-            print("Actual backup would go here...")
-            print(self.cmd(self.item))
+            self.info("Actual backup would go here...")
+            self.info(self.cmd(self.item))
         else:
-            print("Doing actual backup...")
+            self.info("Doing actual backup...")
             proc = sp.Popen(self.cmd(self.item), shell=True)
             proc.communicate()
 
@@ -133,13 +153,14 @@ class Sync(object):
 
         return os.path.join(self.data.conf_dir, "global.excludes")
 
-class Data(object):
+class Data(Base):
     """Class to hold all miscellaneous general data."""
 
     # Constructor:
     def __init__(self, opts, logger=None):
+        super().__init__(logger)
+
         self.opts = opts # command-line options passed via argparse
-        self.logger = logger # logger object
 
         h = os.environ['HOME']
         self.conf_dir = '{h}/.increback'.format(h=h) # configuration dir
@@ -162,7 +183,8 @@ class Data(object):
     def read_conf(self):
         """Read the config file."""
         
-        msg = "Reading configuration from: {s.conf_file}".format(s=self)
+        fname = self.logger.with_name_color(self.conf_file)
+        msg = "Reading configuration from: {f}".format(f=fname)
         self.info(msg)
 
         try:
@@ -185,7 +207,8 @@ class Data(object):
         """Check whether destination directory is mounted."""
 
         if not self.is_dest_dir_mounted_for(item):
-            msg = 'Destination dir {d} not present!'.format(d=self.dest_dir_for(item))
+            colored_dir = self.logger.with_name_color(self.dest_dir_for(item))
+            msg = 'Destination dir {d} not present!'.format(d=colored_dir)
             self.error(msg)
             sys.exit()
 
@@ -219,22 +242,6 @@ class Data(object):
         """Whether today's backup has been done for item 'item'."""
 
         return os.path.isdir(self.backup_dir_for(item))
-
-    def info(self, msg):
-        """Output 'msg' message with logger object as info, or just print if none."""
-
-        if self.logger:
-            self.logger.info(msg)
-        else:
-            print(msg)
-
-    def error(self, msg):
-        """Output 'msg' message with logger object as error, or just print if none."""
-
-        if self.logger:
-            self.logger.error(msg)
-        else:
-            print(msg)
 
 
     # Public properties:
