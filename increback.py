@@ -32,7 +32,7 @@ def main():
             continue
 
         # Build rsync command(s) and run:
-        sync = core.Sync(data, item)
+        sync = core.Sync(data, item, logger)
         sync.run(opts)
 
 

@@ -65,12 +65,12 @@ class Sync(object):
     RSYNC_BASE = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
 
     # Constructor:
-    def __init__(self, data, item):
+    def __init__(self, data, item, logger=None):
         super().__init__()
 
         self.data = data
         self.item = item
-        self.logger.info("ola k ase")
+        self.logger = logger
 
 
     # Public methods:
