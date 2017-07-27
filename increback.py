@@ -17,7 +17,7 @@ def main():
     logger = logworks.Logger(opts.log_conf, opts.no_colors)
 
     # General variables in centralized Data() object:
-    data = core.Data(opts)
+    data = core.Data(opts, logger=logger)
 
     # Perform backup of each element:
     for  item in data.items:

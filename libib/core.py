@@ -110,8 +110,8 @@ class Sync(object):
         if self.has_particular_excludes(item):
             cmd += ' --exclude-from={e} '.format(e=self.excludes_for(item))
         
-        if self.data.verbosity > 0:
-            cmd += ' -vh --progress '
+        #if self.data.verbosity > 0:
+            #cmd += ' -vh --progress '
 
         # Link-dirs:
         for link_dir in self.data.link_dirs_for(item):
@@ -137,19 +137,17 @@ class Data(object):
     """Class to hold all miscellaneous general data."""
 
     # Constructor:
-    def __init__(self, opts):
+    def __init__(self, opts, logger=None):
+        self.opts = opts # command-line options passed via argparse
+        self.logger = logger # logger object
+
         h = os.environ['HOME']
         self.conf_dir = '{h}/.increback'.format(h=h) # configuration dir
-        self.opts = opts # command-line options passed via argparse
-        self.verbosity = opts.verbosity
         self.timestamp = timestamp()
         
-        # Text stuff:
-        self.msg = logworks.Logger()
-
         # Make dry runs more verbose:
-        if opts.dry_run:
-            self.verbosity += 1
+        #if opts.dry_run:
+            #self.verbosity += 1
 
         # Cache vars:
         self.__link_dirs_for = {}
@@ -165,7 +163,7 @@ class Data(object):
         """Read the config file."""
         
         msg = "Reading configuration from: {s.conf_file}".format(s=self)
-        self.msg.info(msg)
+        self.info(msg)
 
         try:
             with open(self.conf_file) as f:
@@ -187,10 +185,8 @@ class Data(object):
         """Check whether destination directory is mounted."""
 
         if not self.is_dest_dir_mounted_for(item):
-            error = self.msg.error_color("[ERROR]")
-            dest = self.msg.name_color(self.dest_dir_for(item))
-            msg = '{e} Destination dir {d} not present!'.format(e=error, d=dest)
-            print(msg)
+            msg = 'Destination dir {d} not present!'.format(d=self.dest_dir_for(item))
+            self.error(msg)
             sys.exit()
 
     def max_link_dirs_for(self, item):
@@ -223,6 +219,22 @@ class Data(object):
         """Whether today's backup has been done for item 'item'."""
 
         return os.path.isdir(self.backup_dir_for(item))
+
+    def info(self, msg):
+        """Output 'msg' message with logger object as info, or just print if none."""
+
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(msg)
+
+    def error(self, msg):
+        """Output 'msg' message with logger object as error, or just print if none."""
+
+        if self.logger:
+            self.logger.error(msg)
+        else:
+            print(msg)
 
 
     # Public properties:
