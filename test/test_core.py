@@ -1,7 +1,5 @@
 # Standard libs:
 import sys
-import mock
-import hashlib
 import unittest
 import argparse
 from datetime import datetime
@@ -26,7 +24,7 @@ class TestFunctions(unittest.TestCase):
     def test_timestamp_default(self):
         ret = core.timestamp()
 
-        self.assertRegexpMatches(ret, "^\d{4}\.\d{2}\.\d{2}$")
+        self.assertRegex(ret, "^\d{4}\.\d{2}\.\d{2}$")
 
     def test_timestamp_feed_date(self):
         inputs = [
