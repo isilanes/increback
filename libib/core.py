@@ -3,9 +3,13 @@ import os
 import sys
 import glob
 import json
+import logging
 import datetime
 import argparse
 import subprocess as sp
+
+# Our libs:
+from libib import logworks
 
 # Functions:
 def parse_args(args=sys.argv[1:]):
@@ -17,13 +21,17 @@ def parse_args(args=sys.argv[1:]):
             help="Configuration file. Default: None.",
             default=None)
 
+    parser.add_argument("--log-conf",
+            help="Logger configuration file. Default: None.",
+            default=None)
+
     parser.add_argument("-v", "--verbose",
             dest="verbosity",
             help="Increase verbosity level by 1. Default: 0 (no output)",
             action="count",
             default=0)
 
-    parser.add_argument("-y", "--dryrun",
+    parser.add_argument("-y", "--dry-run",
             help="Dry run: do nothing, just tell what would be done. Default: real run.",
             action="store_true",
             default=False)
@@ -51,33 +59,56 @@ def timestamp(day=datetime.date.today(), offset=0):
 
 
 # Classes:
-class Sync(object):
+class Base(object):
+    """Generic superclass."""
+
+    def __init__(self, logger):
+        self.logger = logger
+
+    def info(self, msg):
+        """Output 'msg' message with logger object as info, or just print if none."""
+
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(msg)
+
+    def error(self, msg):
+        """Output 'msg' message with logger object as error, or just print if none."""
+
+        if self.logger:
+            self.logger.error(msg)
+        else:
+            print(msg)
+
+class Sync(Base):
     """Objects that hold all info about a rsync command."""
+    
+    RSYNC_BASE = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
 
     # Constructor:
-    def __init__(self, data, item):
+    def __init__(self, data, item, logger=None):
+        super().__init__(logger)
+
         self.data = data
         self.item = item
-        self.dryrun = False
-        self.rsync_base = 'rsync -rltou --delete --delete-excluded ' # base rsync command to use
 
 
     # Public methods:
     def run(self, opts):
         """Do run."""
 
+        colored_item = self.data.with_name_color("[{s.item}]".format(s=self))
+        self.info("Determining last linkable dirs for {item}:".format(item=colored_item))
         if self.data.link_dirs_for(self.item):
-            citem = "[{item}]".format(item=self.item)
-            citem = self.data.msg.name_color(citem)
-            print("Determining last linkable dirs for {item}:".format(item=citem))
             for ldir in self.data.link_dirs_for(self.item):
-                print(ldir)
+                self.info(ldir)
 
         if opts.dryrun:
-            print("Actual backup would go here...")
-            print(self.cmd(self.item))
+            self.info("Actual backup would go here...")
+            self.info(self.cmd(self.item))
         else:
-            print("Doing actual backup...")
+            self.info("Doing actual backup...")
             proc = sp.Popen(self.cmd(self.item), shell=True)
             proc.communicate()
 
@@ -94,13 +125,13 @@ class Sync(object):
     def cmd(self, item):
         """rsync command line."""
 
-        cmd = self.rsync_base
+        cmd = self.RSYNC_BASE
         cmd += ' --exclude-from={s.exclude_general} '.format(s=self)
         if self.has_particular_excludes(item):
             cmd += ' --exclude-from={e} '.format(e=self.excludes_for(item))
         
-        if self.data.verbosity > 0:
-            cmd += ' -vh --progress '
+        #if self.data.verbosity > 0:
+            #cmd += ' -vh --progress '
 
         # Link-dirs:
         for link_dir in self.data.link_dirs_for(item):
@@ -122,20 +153,22 @@ class Sync(object):
 
         return os.path.join(self.data.conf_dir, "global.excludes")
 
-class Data(object):
+class Data(Base):
     """Class to hold all miscellaneous general data."""
 
     # Constructor:
-    def __init__(self, opts):
+    def __init__(self, opts, logger=None):
+        super().__init__(logger)
+
+        self.opts = opts # command-line options passed via argparse
+
         h = os.environ['HOME']
         self.conf_dir = '{h}/.increback'.format(h=h) # configuration dir
-        self.opts = opts # command-line options passed via argparse
-        self.verbosity = opts.verbosity
         self.timestamp = timestamp()
         
         # Make dry runs more verbose:
-        if opts.dryrun:
-            self.verbosity += 1
+        #if opts.dry_run:
+            #self.verbosity += 1
 
         # Cache vars:
         self.__link_dirs_for = {}
@@ -145,16 +178,14 @@ class Data(object):
         if not self.conf:
             sys.exit()
 
-        # Text stuff:
-        self.msg = Messages(opts, self.conf)
-
 
     # Public methods:
     def read_conf(self):
         """Read the config file."""
         
-        msg = "Reading configuration from: {s.conf_file}".format(s=self)
-        print(msg)
+        fname = self.logger.with_name_color(self.conf_file)
+        msg = "Reading configuration from: {f}".format(f=fname)
+        self.info(msg)
 
         try:
             with open(self.conf_file) as f:
@@ -176,10 +207,9 @@ class Data(object):
         """Check whether destination directory is mounted."""
 
         if not self.is_dest_dir_mounted_for(item):
-            error = self.msg.error_color("[ERROR]")
-            dest = self.msg.name_color(self.dest_dir_for(item))
-            msg = '{e} Destination dir {d} not present!'.format(e=error, d=dest)
-            print(msg)
+            colored_dir = self.logger.with_name_color(self.dest_dir_for(item))
+            msg = 'Destination dir {d} not present!'.format(d=colored_dir)
+            self.error(msg)
             sys.exit()
 
     def max_link_dirs_for(self, item):
@@ -229,38 +259,4 @@ class Data(object):
         """List of items of which we are going to make a backup."""
 
         return [item for item, iconf in self.conf["items"].items() if "active" in iconf and iconf["active"]]
-
-class Messages(object):
-    """Class to hold text stuff."""
-
-    # Constructor:
-    def __init__(self, opts, conf):
-        self.opts = opts
-        self.conf = conf
-
-    # Public methods:
-    def which_color(self, text, which):
-        """Return 'text' with color for 'which' type of text."""
-
-        if self.opts.no_colors or which not in self.conf["colors"] or not self.conf["colors"][which]:
-            return text
-
-        return Messages.colorize(text, self.conf["colors"][which])
-
-    def error_color(self, text):
-        """Return 'text' with color for error."""
-
-        return self.which_color(text, "error")
-
-    def name_color(self, text):
-        """Return 'text' with color for name."""
-
-        return self.which_color(text, "name")
-
-
-    # Static methods:
-    def colorize(text, color_number):
-        """Return colorized version of 'text', with terminal color 'color_number' (31, 32...)."""
-
-        return "\033[{n}m{t}\033[0m".format(t=text, n=color_number)
 

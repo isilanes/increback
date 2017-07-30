@@ -54,7 +54,95 @@ class TestFunctions(unittest.TestCase):
         ret = core.parse_args([])
         self.assertIsInstance(ret, argparse.Namespace)
 
+    def test_parse_args_config(self):
+        cases = [
+            (["--config", "wtf.json"], "wtf.json"),
+            ([], None),
+        ]
+        for args, value in cases:
+            ret = core.parse_args(args)
+            self.assertEqual(ret.config, value)
 
-# Main loop:
-if __name__ == "__main__":
-    unittest.main()
+    def test_parse_args_dryrun(self):
+        cases = [
+            (["-y"], True),
+            (["--dry-run"], True),
+            ([], False),
+        ]
+        for args, value in cases:
+            ret = core.parse_args(args)
+            self.assertEqual(ret.dry_run, value)
+
+class TestSync(unittest.TestCase):
+    """Test Sync() class."""
+
+    # Setup and teardown:
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+
+    # Test timestamp():
+    def test_constructor(self):
+        # Assemble:
+        cases = (
+            ({}, "something", None),
+        )
+
+        for data, item, logger in cases:
+            # Act:
+            sync = core.Sync(data, item, logger)
+
+            # Assert:
+            self.assertEqual(sync.item, item)
+            self.assertEqual(sync.data, data)
+    
+
+    # Test run():
+    def test_run_dry(self):
+        # Prepare:
+        linkables = ["rubbish", "test", "123dir"]
+        data = mock.Mock()
+        data.link_dirs_for.return_value = linkables
+        item = "nothing"
+        logger = None
+        opts = mock.Mock()
+        opts.dryrun = True
+        sync = core.Sync(data, item, logger)
+        sync.info = mock.Mock()
+        sync.cmd = mock.Mock()
+
+        # Run:
+        with mock.patch("subprocess.Popen") as mock_popen:
+            sync.run(opts)
+
+        # Assert:
+        self.assertEqual(sync.info.call_count, len(linkables)+3)
+        sync.cmd.assert_called_once()
+        mock_popen.assert_not_called()
+
+    def test_run_true(self):
+        # Prepare:
+        linkables = ["rubbish", "test", "123dir"]
+        data = mock.Mock()
+        data.link_dirs_for.return_value = linkables
+        item = "nothing"
+        logger = None
+        opts = mock.Mock()
+        opts.dryrun = False
+        sync = core.Sync(data, item, logger)
+        sync.info = mock.Mock()
+        sync.cmd = mock.Mock()
+
+        # Run:
+        with mock.patch("subprocess.Popen") as mock_popen:
+            sync.run(opts)
+
+        # Assert:
+        self.assertEqual(sync.info.call_count, len(linkables)+2)
+        sync.cmd.assert_called_once()
+        mock_popen.assert_called_once()
+        self.assertEqual(mock_popen.call_args[0][0], sync.cmd(item))
+

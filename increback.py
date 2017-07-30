@@ -4,7 +4,7 @@ increback
 """
 
 # Our libs:
-from libib import core
+from libib import core, logworks
 
 # Functions:
 def main():
@@ -13,8 +13,11 @@ def main():
     # Get command-line options:
     opts = core.parse_args()
 
+    # Logger object:
+    logger = logworks.Logger(opts.log_conf, opts.no_colors)
+
     # General variables in centralized Data() object:
-    data = core.Data(opts)
+    data = core.Data(opts, logger=logger)
 
     # Perform backup of each element:
     for  item in data.items:
@@ -29,7 +32,7 @@ def main():
             continue
 
         # Build rsync command(s) and run:
-        sync = core.Sync(data, item)
+        sync = core.Sync(data, item, logger)
         sync.run(opts)
 
 
