@@ -16,7 +16,7 @@ class Logger(object):
     # Constructor:
     def __init__(self, conf_fn=None, nocolor=False):
         # If given a configuration file name, try to read it:
-        self.conf = self.read_conf(conf_fn)
+        self.conf = Logger.read_conf(conf_fn)
 
         # Avoid colors?:
         self.nocolor = nocolor
@@ -33,20 +33,6 @@ class Logger(object):
 
 
     # Public methods:
-    def read_conf(self, fn=None):
-        """Read configuration file 'fn' and return dictionary with configuration.
-        Return empty dir if we couldn't read.
-        """
-        if not fn:
-            return {}
-
-        try:
-            with open(fn) as f_conf:
-                return json.load(f_conf)
-        except FileNotFoundError:
-            print("Could not read logger configuration file '{f}'. Ignoring...".format(f=fn))
-            return {}
-
     def info(self, text):
         """Log (print) 'text' as info."""
 
@@ -126,6 +112,21 @@ class Logger(object):
 
 
     # Static methods:
+    @staticmethod
+    def read_conf(fn=None):
+        """Read configuration file 'fn' and return dictionary with configuration.
+        Return empty dir if we couldn't read.
+        """
+        if not fn:
+            return {}
+
+        try:
+            with open(fn) as f_conf:
+                return json.load(f_conf)
+        except FileNotFoundError:
+            print("Could not read logger configuration file '{f}'. Ignoring...".format(f=fn))
+            return {}
+
     @staticmethod
     def colorize(text, color_number=None):
         """Return colorized version of 'text', with terminal color 'color_number' (31, 32...).
