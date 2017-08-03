@@ -4,7 +4,8 @@ increback
 """
 
 # Our libs:
-from libib import core, logworks
+from libib import core
+from logworks import logworks
 
 # Functions:
 def main():

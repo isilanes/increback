@@ -9,7 +9,7 @@ import argparse
 import subprocess as sp
 
 # Our libs:
-from libib import logworks
+from logworks import logworks
 
 # Functions:
 def parse_args(args=sys.argv[1:]):
@@ -62,9 +62,12 @@ def timestamp(day=datetime.date.today(), offset=0):
 class Base(object):
     """Generic superclass."""
 
+    # Constructor:
     def __init__(self, logger):
         self.logger = logger
 
+
+    # Public methods:
     def info(self, msg):
         """Output 'msg' message with logger object as info, or just print if none."""
 
@@ -184,14 +187,14 @@ class Data(Base):
         """Read the config file."""
         
         fname = self.logger.with_name_color(self.conf_file)
-        msg = "Reading configuration from: {f}".format(f=fname)
-        self.info(msg)
+        msg = "Reading configuration from [ {f} ]".format(f=fname)
+        self.logger.info(msg)
 
         try:
             with open(self.conf_file) as f:
                 return json.load(f)
         except:
-            print("Could not load config file [ {s.conf_file} ]".format(s=self))
+            self.logger.error("Could not load config file [ {f} ]".format(f=fname))
             return None
         
     def link_dirs_for(self, item):

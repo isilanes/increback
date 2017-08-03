@@ -1,4 +1,4 @@
-## DESCRIPTION ##
+## Description ##
 
 It makes incremental backups with rsync.
 
@@ -6,7 +6,13 @@ It creates a fully functional (and apparently, complete) copy of the current sta
 
 Whichever backup can be deleted and, due to how hard links work, the rest of the backups will not be affected at all.
 
-## USAGE ##
+## Depencencies ##
+
+increback makes use of the logworks lib, by the same author. logworks is distributed with increback, but can be independently obtained from:
+
+    https://github.com/isilanes/logworks
+
+## Usage ##
 
 For usage, run:
 
