@@ -11,6 +11,11 @@ import subprocess as sp
 # Our libs:
 from logworks import logworks
 
+# Constants:
+HOME = os.environ["HOME"]
+DEFAULT_CONF_DIR = os.path.join(HOME, ".increback")
+DEFAULT_CONF_FILENAME = "conf.json"
+
 # Functions:
 def parse_args(args=sys.argv[1:]):
     """Parse command line arguments and return result."""
@@ -18,7 +23,7 @@ def parse_args(args=sys.argv[1:]):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-c", "--config",
-            help="Configuration file. Default: None.",
+            help="Configuration file. Default: {f}.".format(f=os.path.join(DEFAULT_CONF_DIR, DEFAULT_CONF_FILENAME)),
             default=None)
 
     parser.add_argument("--log-conf",
@@ -165,8 +170,7 @@ class Data(Base):
 
         self.opts = opts # command-line options passed via argparse
 
-        h = os.environ['HOME']
-        self.conf_dir = '{h}/.increback'.format(h=h) # configuration dir
+        self.conf_dir = DEFAULT_CONF_DIR
         self.timestamp = timestamp()
         
         # Make dry runs more verbose:
@@ -255,7 +259,7 @@ class Data(Base):
         if self.opts.config:
             return self.opts.config
         else:
-            return os.path.join(self.conf_dir, "conf.json")
+            return os.path.join(self.conf_dir, DEFAULT_CONF_FILENAME)
 
     @property
     def items(self):
