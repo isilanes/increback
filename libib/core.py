@@ -98,13 +98,13 @@ class Sync(Base):
     def run(self, opts):
         """Do run."""
 
-        colored_item = self.data.with_name_color("[{s.item}]".format(s=self))
+        colored_item = self.logger.with_name_color("[{s.item}]".format(s=self))
         self.info("Determining last linkable dirs for {item}:".format(item=colored_item))
         if self.data.link_dirs_for(self.item):
             for ldir in self.data.link_dirs_for(self.item):
                 self.info(ldir)
 
-        if opts.dryrun:
+        if opts.dry_run:
             self.info("Actual backup would go here...")
             self.info(self.cmd(self.item))
         else:
