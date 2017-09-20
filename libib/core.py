@@ -9,7 +9,12 @@ import argparse
 import subprocess as sp
 
 # Our libs:
-from libib import logworks
+from logworks import logworks
+
+# Constants:
+HOME = os.environ["HOME"]
+DEFAULT_CONF_DIR = os.path.join(HOME, ".increback")
+DEFAULT_CONF_FILENAME = "conf.json"
 
 # Functions:
 def parse_args(args=sys.argv[1:]):
@@ -18,7 +23,7 @@ def parse_args(args=sys.argv[1:]):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-c", "--config",
-            help="Configuration file. Default: None.",
+            help="Configuration file. Default: {f}.".format(f=os.path.join(DEFAULT_CONF_DIR, DEFAULT_CONF_FILENAME)),
             default=None)
 
     parser.add_argument("--log-conf",
@@ -62,9 +67,12 @@ def timestamp(day=datetime.date.today(), offset=0):
 class Base(object):
     """Generic superclass."""
 
+    # Constructor:
     def __init__(self, logger):
         self.logger = logger
 
+
+    # Public methods:
     def info(self, msg):
         """Output 'msg' message with logger object as info, or just print if none."""
 
@@ -162,8 +170,7 @@ class Data(Base):
 
         self.opts = opts # command-line options passed via argparse
 
-        h = os.environ['HOME']
-        self.conf_dir = '{h}/.increback'.format(h=h) # configuration dir
+        self.conf_dir = DEFAULT_CONF_DIR
         self.timestamp = timestamp()
         
         # Make dry runs more verbose:
@@ -184,14 +191,14 @@ class Data(Base):
         """Read the config file."""
         
         fname = self.logger.with_name_color(self.conf_file)
-        msg = "Reading configuration from: {f}".format(f=fname)
-        self.info(msg)
+        msg = "Reading configuration from [ {f} ]".format(f=fname)
+        self.logger.info(msg)
 
         try:
             with open(self.conf_file) as f:
                 return json.load(f)
         except:
-            print("Could not load config file [ {s.conf_file} ]".format(s=self))
+            self.logger.error("Could not load config file [ {f} ]".format(f=fname))
             return None
         
     def link_dirs_for(self, item):
@@ -252,7 +259,7 @@ class Data(Base):
         if self.opts.config:
             return self.opts.config
         else:
-            return os.path.join(self.conf_dir, "conf.json")
+            return os.path.join(self.conf_dir, DEFAULT_CONF_FILENAME)
 
     @property
     def items(self):
