@@ -8,7 +8,7 @@ Whichever backup can be deleted and, due to how hard links work, the rest of the
 
 ## Depencencies ##
 
-increback makes use of the logworks lib, by the same author. logworks is distributed with increback, but can be independently obtained from <https://github.com/isilanes/logworks>.
+increback makes use of the logworks lib, by the same author. logworks is not distributed with increback, but can be independently obtained from <https://github.com/isilanes/logworks>.
 
 ## Usage ##
 
