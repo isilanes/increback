@@ -9,6 +9,7 @@ from datetime import datetime
 sys.path.append(".")
 from libib import core
 
+
 # Classes:
 class TestFunctions(unittest.TestCase):
     """Test functions."""
@@ -19,7 +20,6 @@ class TestFunctions(unittest.TestCase):
 
     def tearDown(self):
         pass
-
 
     # Test timestamp():
     def test_timestamp_default(self):
@@ -49,7 +49,6 @@ class TestFunctions(unittest.TestCase):
             ret = core.timestamp(day=day, offset=offset)
             self.assertEqual(ret, string)
 
-
     # Test parse_args():
     def test_parse_args(self):
         ret = core.parse_args([])
@@ -64,7 +63,7 @@ class TestFunctions(unittest.TestCase):
             ret = core.parse_args(args)
             self.assertEqual(ret.config, value)
 
-    def test_parse_args_dryrun(self):
+    def test_parse_args_dry_run(self):
         cases = [
             (["-y"], True),
             (["--dry-run"], True),
@@ -73,6 +72,7 @@ class TestFunctions(unittest.TestCase):
         for args, value in cases:
             ret = core.parse_args(args)
             self.assertEqual(ret.dry_run, value)
+
 
 class TestSync(unittest.TestCase):
     """Test Sync() class."""
@@ -84,22 +84,20 @@ class TestSync(unittest.TestCase):
     def tearDown(self):
         pass
 
-
     # Test timestamp():
     def test_constructor(self):
         # Assemble:
         cases = (
-            ({}, "something", None),
+            ({}, "something"),
         )
 
-        for data, item, logger in cases:
+        for data, item in cases:
             # Act:
-            sync = core.Sync(data, item, logger)
+            sync = core.Sync(data, item)
 
             # Assert:
             self.assertEqual(sync.item, item)
             self.assertEqual(sync.data, data)
-    
 
     # Test run():
     def test_run_dry(self):
@@ -110,8 +108,8 @@ class TestSync(unittest.TestCase):
         item = "nothing"
         logger = None
         opts = mock.Mock()
-        opts.dryrun = True
-        sync = core.Sync(data, item, logger)
+        opts.dry_run = True
+        sync = core.Sync(data, item)
         sync.info = mock.Mock()
         sync.cmd = mock.Mock()
 
@@ -130,10 +128,9 @@ class TestSync(unittest.TestCase):
         data = mock.Mock()
         data.link_dirs_for.return_value = linkables
         item = "nothing"
-        logger = None
         opts = mock.Mock()
-        opts.dryrun = False
-        sync = core.Sync(data, item, logger)
+        opts.dry_run = False
+        sync = core.Sync(data, item)
         sync.info = mock.Mock()
         sync.cmd = mock.Mock()
 
