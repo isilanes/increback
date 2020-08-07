@@ -113,9 +113,10 @@ class Sync:
 
         # From-dir:
         cmd += f" {self.data.from_dir_for(item)}/ "
+        cmd += " {d}/ ".format(d=self.data.from_dir_for(item))
 
         # To-dir:
-        cmd += f" {self.data_backup_dir_for(item)}/ "
+        cmd += " {d}/ ".format(d=self.data.backup_dir_for(item))
 
         return cmd
 
