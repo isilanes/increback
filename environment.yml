@@ -1,0 +1,11 @@
+name: increback
+channels:
+  - defaults
+dependencies:
+  - python=3.8.5
+  - coverage=5.0
+  - flake8=3.7.9
+  - mock
+  - pip=20.0.2
+  - pip:
+      - radon==4.1.0
